@@ -3,9 +3,15 @@
 #include "osa.h"
 #include "oc_uart.h"
 #include "modbus.h"
+#define MAX_SLAVE 20
 
 static OSTaskRef MasterWorkerRef;
-ModBus_parameter* ModBus_Slave1;
+ModBus_parameter* ModBus_Slave_paramater[MAX_SLAVE];
+
+void modbus_readfromuart(byte buf_ptr)
+{
+	ModBus_readByteFromOuter(ModBus_Slave_paramater[0], buf_ptr);
+}
 
 static void sendHandler(byte* data, size_t length){
 	OC_UART_Send(OC_UART_PORT_3, data, length);
@@ -15,7 +21,7 @@ static void modbus_master(void *parameter)
 {
 	while (1)
 	{
-		ModBus_Master_loop(ModBus_Slave1);
+		ModBus_Master_loop(ModBus_Slave_paramater[0]);
 		OSATaskSleep(200);
 	}
 }
@@ -29,8 +35,8 @@ void modbus_app(void)
 		return;
 	}
 
-	ModBus_Slave1=(ModBus_parameter*)malloc(sizeof(ModBus_parameter));
-	if(ModBus_Slave1 == NULL)
+	ModBus_Slave_paramater[0]=(ModBus_parameter*)malloc(sizeof(ModBus_parameter));
+	if(ModBus_Slave_paramater[0] == NULL)
 	{
 		return;
 	}
@@ -40,7 +46,7 @@ void modbus_app(void)
 	setting.baudRate = 115200;
 	setting.register_access_limit = 1;
 	setting.sendHandler = sendHandler;
-	ModBus_setup(ModBus_Slave1, setting);
+	ModBus_setup(ModBus_Slave_paramater[0], setting);
 	
 	if(OSATaskCreate(&MasterWorkerRef,
 	                 MasterTaskStack,

@@ -9,7 +9,7 @@
 
 #define MAX_SLAVE 20
 static OSTaskRef dtuWorkerRef;
-extern ModBus_parameter* ModBus_Slave1;
+extern ModBus_parameter* ModBus_Slave_paramater[MAX_SLAVE];
 
 char *modbus_buf = "{\"slaves\":[{\"slave_address\":1,\"register_address\":3,\"function\":\"tem\",\"protocol\":1},{\"slave_address\":1,\"register_address\":4,\"function\":\"hum\",\"protocol\":1}]}";
 typedef struct slave {
@@ -107,7 +107,7 @@ void dtu_worker_thread(void * argv)
 		unsigned int i = 0;
 		for(i = 0; i < slave_count; i++){
 			OC_UART_LOG_Printf("slave %d: address %d\n", slaves[i].s_address, slaves[i].r_address);
-			ModBus_getRegister(ModBus_Slave1, slaves[i].r_address, 1, modbus_get_response);
+			ModBus_getRegister(ModBus_Slave_paramater[0], slaves[i].r_address, 1, modbus_get_response);
 			OSATaskSleep(2000);
 		}
 	}

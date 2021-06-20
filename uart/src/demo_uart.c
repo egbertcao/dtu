@@ -12,7 +12,6 @@
 OSATaskRef customerUartRxTaskRef;
 UINT8* customerUartRxTaskStack;
 extern OSAFlagRef customer_Uart_FlagRef;
-extern ModBus_parameter* ModBus_Slave1;
 
 static void demo_uart_callback(void *user_data, OC_UART_Event uart_evt)
 {
@@ -71,7 +70,7 @@ void customerUartRxTask(VOID *argv)
 				readsize = OC_UART_Receive(OC_UART_PORT_3, buf_ptr, length);
 
 				for (i = 0; i < readsize; i++) {
-					ModBus_readByteFromOuter(ModBus_Slave1, buf_ptr[i]);
+					modbus_readfromuart(buf_ptr[i]);
 				}
 				OC_UART_LOG_Printf("\n");				
 				free(buf_ptr);
