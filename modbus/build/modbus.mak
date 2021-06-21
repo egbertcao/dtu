@@ -39,7 +39,7 @@ else
 PACKAGE_INC_PATHS   += ${BUILD_ROOT}\hal\oc_include 
 endif 
 
-PACKAGE_SRC_FILES = modbus_master.c modbus.c 
+PACKAGE_SRC_FILES = modbus.c 
  
 # These are the tool flags specific to the GPIO package only.
 # The environment, target, and group also set flags.
