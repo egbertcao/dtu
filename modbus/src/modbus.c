@@ -313,9 +313,9 @@ static MODBUS_FRAME_T* addFrame(ModBus_parameter* ModBus_para)
 // 接收字节数据到ModBus协议, 一般在中断函数中调用(如串口接收中断)
 void ModBus_readByteFromOuter(ModBus_parameter* ModBus_para, byte receivedByte)
 {
-
+#if 0
 	OC_UART_LOG_Printf("address %02x read byte: %02x\n", ModBus_para->m_address, receivedByte);
-
+#endif
 
 	/*** 此函数 内部 不可更改 ModBus_para->m_pBeginReceiveBufferTmp 值!!!!!!!!!!!!!
 	**** 此函数 外部 不可更改 ModBus_para->m_pEndReceiveBufferTmp 值!!!!!!!!!!!!!!!
@@ -570,7 +570,7 @@ static byte ModBus_detectFrame(ModBus_parameter* ModBus_para, size_t* restSize)
 ** GetReponseHandler: 读取结果回调函数, 传入参数(uint16_t* buff, uint16_t buffLen)
 ** 返回指令序号(大于0), 以便在回调函数中判断完成的是哪一指令, 不能发送返回0
 ***/
-byte ModBus_getRegister(ModBus_parameter* ModBus_para, uint16_t address, uint16_t count, void(*GetReponseHandler)(uint16_t*, uint16_t))
+byte ModBus_getRegister(ModBus_parameter* ModBus_para, uint16_t address, uint16_t count, void(*GetReponseHandler)(uint16_t, uint16_t, uint16_t*, uint16_t))
 {
 	MODBUS_FRAME_T* pFrame = addFrame(ModBus_para);
 	pFrame->type = READ_REGISTER;
@@ -785,7 +785,7 @@ static byte ModBus_parseReveivedBuff(ModBus_parameter* ModBus_para)
 		// 回调函数
 		if (pFrame->responseHandler)
 		{
-			(*(GetReponseHandler_T)(pFrame->responseHandler))(ModBus_para->m_registerData, count);
+			(*(GetReponseHandler_T)(pFrame->responseHandler))(ModBus_para->m_address, pFrame->address, ModBus_para->m_registerData, count);
 		}
 		break;
 	}
@@ -874,7 +874,7 @@ static void sendFrame_loop(ModBus_parameter* ModBus_para)
 			switch (pFrame->type)
 			{
 			case READ_REGISTER:
-				(*(GetReponseHandler_T)(pFrame->responseHandler))(0, 0);
+				(*(GetReponseHandler_T)(pFrame->responseHandler))(0,0, 0, 0);
 				break;
 			case WRITE_SINGLE_REGISTER:
 				(*(SetReponseHandler_T)(pFrame->responseHandler))(0, 0);

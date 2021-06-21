@@ -94,7 +94,7 @@ typedef struct _MODBUS_FRAME_T {
 	u8 count; // 访问寄存器的个数
 } MODBUS_FRAME_T;
 
-typedef void(*GetReponseHandler_T)(uint16_t*, uint16_t); // 读取寄存器回调函数指针类型, 回到函数参数(寄存器值缓冲区首地址, 寄存器个数)
+typedef void(*GetReponseHandler_T)(uint16_t, uint16_t, uint16_t*, uint16_t); // 读取寄存器回调函数指针类型, 回到函数参数(寄存器值缓冲区首地址, 寄存器个数)
 typedef void(*SetReponseHandler_T)(uint16_t, uint16_t); // 写入寄存器回调函数指针类型, 回调函数参数(寄存器地址, 写入个数)
 
 typedef struct __MODBUS_Parameter {
@@ -171,7 +171,7 @@ void ModBus_Master_loop(ModBus_parameter* ModBus_para);
 ** GetReponseHandler: 读取结果回调函数, 传入参数(uint16_t* buff, uint16_t buffLen),读取未成功传入参数(0,0)
 ** 返回指令序号(大于0), 以便在回调函数中判断完成的是哪一指令, 不可发送则返回0
 ***/
-byte ModBus_getRegister(ModBus_parameter* ModBus_para, uint16_t address, uint16_t count, void(*GetReponseHandler)(uint16_t*, uint16_t));
+byte ModBus_getRegister(ModBus_parameter* ModBus_para, uint16_t address, uint16_t count, void(*GetReponseHandler)(uint16_t, uint16_t, uint16_t*, uint16_t));
 
 /** 写单个寄存器 **/
 /*** 参数 ***

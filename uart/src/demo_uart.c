@@ -60,9 +60,9 @@ void customerUartRxTask(VOID *argv)
 		switch (event)
 		{
 			case OC_UART3_EVENT_RX_ARRIVED:
-				OC_UART_LOG_Printf("OC_UART3_EVENT_RX_ARRIVED\n");
+				//OC_UART_LOG_Printf("OC_UART3_EVENT_RX_ARRIVED\n");
 				length = OC_UART_Get_Available_Receive_Bytes(OC_UART_PORT_3);
-				OC_UART_LOG_Printf("length=%d\n",length);
+				//OC_UART_LOG_Printf("length=%d\n",length);
 
 				buf_ptr = (UINT8 *)malloc(length);
     			ASSERT(buf_ptr != NULL);
@@ -71,8 +71,7 @@ void customerUartRxTask(VOID *argv)
 
 				for (i = 0; i < readsize; i++) {
 					modbus_readfromuart(buf_ptr[i]);
-				}
-				OC_UART_LOG_Printf("\n");				
+				}				
 				free(buf_ptr);
 				buf_ptr = NULL;
 				break;

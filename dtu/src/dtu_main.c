@@ -24,13 +24,13 @@ void modbus_readfromuart(byte buf_ptr)
 }
 
 // 寄存器值缓冲区首地址, 寄存器个数
-static void modbus_get_response(uint16_t *address, uint16_t size)
+static void modbus_get_response(uint16_t m_address, uint16_t r_address, uint16_t *buf_address, uint16_t size)
 {
 	char message[20] = {0};
 	unsigned int i = 0;
-	OC_UART_LOG_Printf("modbus_get_response size = %d\n", size);
+	OC_UART_LOG_Printf("modbus_get_response size %d : (0x%x)/(0x%x) = ", size, m_address, r_address);
 	for(i = 0; i < size; i++){
-		OC_UART_LOG_Printf("%x ", *(address+i));
+		OC_UART_LOG_Printf("%x ", *(buf_address+i));
 	}
 	OC_UART_LOG_Printf("\n");
 }
@@ -47,7 +47,7 @@ void dtu_worker_thread(void * argv)
 	{
 		unsigned int i = 0;
 		for(i = 0; i < 2; i++){
-			ModBus_getRegister(ModBus_Slave_paramater[i], slaves[i].r_address, 1, modbus_get_response);
+			ModBus_getRegister(ModBus_Slave_paramater[i], 1, 3, modbus_get_response);
 			OSATaskSleep(2000);
 		}
 	}
@@ -83,7 +83,7 @@ void customer_app_dtu_main(void)
 		setting.address = i+3;
 		setting.frameType = RTU;
 		setting.baudRate = 115200;
-		setting.register_access_limit = 1;
+		setting.register_access_limit = 10;
 		setting.sendHandler = sendHandler;
 		ModBus_setup(ModBus_Slave_paramater[i], setting);
 	}
