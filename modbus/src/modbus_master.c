@@ -26,7 +26,7 @@ static void modbus_master(void *parameter)
 	}
 }
 
-void modbus_app(void)
+void modbus_slave_init(ModBus_Setting_T setting)
 {
 	void *MasterTaskStack;
 	MasterTaskStack=malloc(4096);
@@ -35,16 +35,6 @@ void modbus_app(void)
 		return;
 	}
 
-	ModBus_Slave_paramater[0]=(ModBus_parameter*)malloc(sizeof(ModBus_parameter));
-	if(ModBus_Slave_paramater[0] == NULL)
-	{
-		return;
-	}
-	ModBus_Setting_T setting;
-	setting.address = 3;
-	setting.frameType = RTU;
-	setting.baudRate = 115200;
-	setting.register_access_limit = 1;
 	setting.sendHandler = sendHandler;
 	ModBus_setup(ModBus_Slave_paramater[0], setting);
 	

@@ -122,9 +122,18 @@ void customer_app_dtu_main(void)
 		return;
 	}
 
-	// create modbus slave depends on slave instance
-	OC_UART_LOG_Printf("modbus Start!\n");
-	modbus_app();
+	ModBus_Slave_paramater[0]=(ModBus_parameter*)malloc(sizeof(ModBus_parameter));
+	if(ModBus_Slave_paramater[0] == NULL)
+	{
+		return;
+	}
+
+	ModBus_Setting_T setting;
+	setting.address = 3;
+	setting.frameType = RTU;
+	setting.baudRate = 115200;
+	setting.register_access_limit = 1;
+	modbus_slave_init(setting);
 
 	if(OSATaskCreate(&dtuWorkerRef,
 	                 TaskStack,
