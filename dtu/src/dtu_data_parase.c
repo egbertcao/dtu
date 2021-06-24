@@ -8,13 +8,43 @@
 #include "oc_uart.h"
 #include "dtu_common.h"
 
-char *modbus_buf = "{\"slaves\":[{\"slave_address\":1,\"register_address\":3,\"function\":\"tem\",\"protocol\":1},{\"slave_address\":1,\"register_address\":4,\"function\":\"hum\",\"protocol\":1}]}";
+char *modbus_buf = "{\"msg\":[ \
+	{\"slave_address\":1,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}, \
+	{\"slave_address\":2,\"register_address\":4,\"count\":1,\"function\":\"hum\",\"protocol\":1}, \
+	{\"slave_address\":3,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}, \
+	{\"slave_address\":1,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}, \
+	{\"slave_address\":2,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}]}";
 
-int json_parse_file(void *slaves)
+void arr_rpttn(int *pArr, int n)
+{
+	int i, j, k;
+	int cnt = 0;
+	for(i=0; i<n-cnt; i++)
+	{
+		for(j=i+1; j<n-cnt; j++)
+		{
+			if(pArr[i] == pArr[j])
+			{
+				for(k=j; k<n-cnt-1; k++)
+				{
+					pArr[k] = pArr[k+1];
+				}
+				j--;
+				cnt++;
+				pArr[k] = 0;
+			}
+		}
+	}
+	
+	return;
+}
+						  
+int json_parse_file(void *slaves, unsigned int *slave_ids, unsigned int *slave_count)
 {
 	cJSON *array = NULL;
 	cJSON *item = NULL;
-	unsigned int count = 0;
+	unsigned int msg_count = 0;
+	unsigned int s_count = 0;
 	
 	cJSON *root = cJSON_Parse(modbus_buf);
 	if(root == NULL) {
@@ -22,27 +52,29 @@ int json_parse_file(void *slaves)
 	}
 		
 	if(root != NULL) {
-		array = cJSON_GetObjectItem(root, "slaves");
+		array = cJSON_GetObjectItem(root, "msg");
 		if(cJSON_IsArray(array)){
 			int array_size = cJSON_GetArraySize(array);
-			OC_UART_LOG_Printf("array_size = %d\n", array_size);
+			printf("array_size = %d\n", array_size);
 			size_t i = 0;
 			for (i = 0; i < array_size; i++)
 			{
 				if(i >= MAX_SLAVE){
 					break;
 				}
-				slave_t *slave_item = (slave_t *)slaves;
+				msg_t *slave_item = (msg_t *)slaves;
 				
 				item = cJSON_GetArrayItem(array, i);
 				slave_item->s_address = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "slave_address"));
 				slave_item->r_address = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "register_address"));
 				slave_item->protocol = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "protocol"));
+				slave_item->count = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "count"));
 				char *function = cJSON_GetStringValue(cJSON_GetObjectItem(item, "function"));
 				memcpy(slave_item->function, function, strlen(function));
-				OC_UART_LOG_Printf("%d,%d,%d,%s\n", slave_item->protocol, slave_item->s_address, slave_item->r_address, slave_item->function);
-				slaves = slaves + sizeof(slave_t);
-				count++;
+				slave_ids[i] = slave_item->s_address;
+				s_count = s_count + 1;
+				slaves = slaves + sizeof(msg_t);
+				msg_count++;
 			}
 		}
 	}
@@ -50,7 +82,17 @@ int json_parse_file(void *slaves)
 	free(root);
 	free(array);
 	free(item);
-	return count;
+	
+	arr_rpttn(slave_ids, s_count);
+	int count = 0;
+	int i = 0;
+	for(i=0;i<s_count; i++)
+	{
+		if(slave_ids[i] != 0){
+			*slave_count = *slave_count+ 1;
+		}
+	}
+	return msg_count;
 }
 
 void send_to_server(int procotol, char *message)

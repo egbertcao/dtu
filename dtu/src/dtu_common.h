@@ -5,9 +5,11 @@ typedef struct slave {
 	unsigned int protocol;
 	unsigned int s_address;
 	unsigned int r_address;
+	unsigned int count;
 	char function[10];
-} slave_t;
+} msg_t;
 
 #define MAX_SLAVE 20
+#define MAX_MSG 20
 
 #endif
