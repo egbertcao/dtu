@@ -1,19 +1,13 @@
 #include <stdio.h>
 #include "global_types.h"
 #include <stdlib.h>
+#include "oc_pcac_fs.h"
 #include "osa.h"
 #include "modbus.h"
 #include "oc_mqtt.h"
 #include "cJSON.h"
 #include "oc_uart.h"
 #include "dtu_common.h"
-
-char *modbus_buf = "{\"msg\":[ \
-	{\"slave_address\":1,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}, \
-	{\"slave_address\":2,\"register_address\":4,\"count\":1,\"function\":\"hum\",\"protocol\":1}, \
-	{\"slave_address\":3,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}, \
-	{\"slave_address\":1,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}, \
-	{\"slave_address\":2,\"register_address\":3,\"count\":1,\"function\":\"tem\",\"protocol\":1}]}";
 
 void arr_rpttn(int *pArr, int n)
 {
@@ -45,8 +39,15 @@ int json_parse_file(void *slaves, unsigned int *slave_ids, unsigned int *slave_c
 	cJSON *item = NULL;
 	unsigned int msg_count = 0;
 	unsigned int s_count = 0;
-	
-	cJSON *root = cJSON_Parse(modbus_buf);
+
+    char buf[1024] = {0};
+	int ret = oc_read_file(MODBUS_JSON_FILE, buf);
+	if(ret <= 0){
+		return -1;
+	}
+
+	//cJSON *root = cJSON_Parse(modbus_buf);
+	cJSON *root = cJSON_Parse(buf);
 	if(root == NULL) {
 		return -1;
 	}

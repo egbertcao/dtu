@@ -9,6 +9,7 @@
 #include "dtu_common.h"
 
 msg_t msg_buf[MAX_MSG];
+dtu_config_t dtu_config;
 unsigned int msg_count = 0;
 unsigned int slave_ids[MAX_SLAVE];
 unsigned int slave_count = 0;
@@ -74,9 +75,17 @@ static void modbus_master(void *parameter)
 
 void customer_app_dtu_main(void)
 {
+	// 最开始判断配置文件是否存在，若不存在则进入配置模式，若存在则读取配置文件，根据配置选择是否进入配置模式
+	dtu_config.dtu_mode = 0;  // 配置模式
+	init_config(&dtu_config);
+	if(dtu_config.dtu_mode == 0) {
+		init_modbus_config();
+	}
+
 	memset(msg_buf, 0, MAX_SLAVE*sizeof(msg_t));
 	msg_count = json_parse_file(msg_buf, slave_ids, &slave_count);
 	if (msg_count <= 0) {
+		OC_UART_LOG_Printf("json_parse_file error!\n");
 		return;
 	}
 	int i = 0;
@@ -104,7 +113,6 @@ void customer_app_dtu_main(void)
 		ModBus_setup(ModBus_Slave_paramater[slave_ids[i]], setting);
 	}
 	
-
 	void *MasterTaskStack;
 	MasterTaskStack=malloc(4096);
 	if(MasterTaskStack == NULL){
@@ -118,7 +126,7 @@ void customer_app_dtu_main(void)
 		return;
 	}
 
-#if 1
+
 	void *DtuTaskStack;
 	DtuTaskStack=malloc(4096);
 	if(DtuTaskStack == NULL){
@@ -130,5 +138,4 @@ void customer_app_dtu_main(void)
 	                 dtu_worker_thread, NULL) != 0){
 		return;
 	}
-	#endif
 }

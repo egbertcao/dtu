@@ -9,7 +9,15 @@ typedef struct slave {
 	char function[10];
 } msg_t;
 
+typedef struct dtuconfig {
+	unsigned int dtu_mode;
+} dtu_config_t;
+
 #define MAX_SLAVE 20
 #define MAX_MSG 20
+
+
+#define MODBUS_JSON_FILE "modbusConfig.json"
+#define DTU_CONFIG_FILE "dtuConfig.json"
 
 #endif
