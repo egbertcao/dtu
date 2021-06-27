@@ -10,8 +10,16 @@ typedef struct slave {
 } msg_t;
 
 typedef struct dtuconfig {
-	unsigned int dtu_mode;
+	unsigned int device_mode;
 } dtu_config_t;
+
+
+enum Device_mode
+{
+	CONFIG_MODE,
+	MODBUS_MODE,
+};
+
 
 #define MAX_SLAVE 20
 #define MAX_MSG 20

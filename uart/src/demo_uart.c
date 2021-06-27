@@ -69,13 +69,8 @@ void customerUartRxTask(VOID *argv)
 				memset(buf_ptr, 0, length);
 				readsize = OC_UART_Receive(OC_UART_PORT_3, buf_ptr, length);
 
-				// TO DO: 需要判断数据是否需要写入modbus
-				#if 0
-				for (i = 0; i < readsize; i++) {
-					modbus_readfromuart(buf_ptr[i]);
-				}	
-				#endif
-							
+				dtu_readfromuart(buf_ptr, readsize);
+				
 				free(buf_ptr);
 				buf_ptr = NULL;
 				break;

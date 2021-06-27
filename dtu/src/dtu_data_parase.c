@@ -46,14 +46,13 @@ int json_parse_file(void *slaves, unsigned int *slave_ids, unsigned int *slave_c
 		return -1;
 	}
 
-	//cJSON *root = cJSON_Parse(modbus_buf);
 	cJSON *root = cJSON_Parse(buf);
 	if(root == NULL) {
 		return -1;
 	}
 		
 	if(root != NULL) {
-		array = cJSON_GetObjectItem(root, "msg");
+		array = cJSON_GetObjectItem(root, "modbusConfig");
 		if(cJSON_IsArray(array)){
 			int array_size = cJSON_GetArraySize(array);
 			printf("array_size = %d\n", array_size);
