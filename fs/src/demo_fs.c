@@ -26,20 +26,22 @@ int oc_write_file(char *filename, char *buf)
     {
         OC_UART_LOG_Printf("%s: write success, bytes - %d\r\n", __func__, bytes);
     }
-    return bytes;
+    
     oc_fs_fclose(fd);
+    return bytes;
 }
 
 int oc_read_file(char *filename, char *buf)
 {
     size_t bytes;
+    char buf_temp[1024] = {0};
     unsigned int fd = oc_fs_fopen(filename, "rb");
     if (fd < 0)
     {
         OC_UART_LOG_Printf("%s: open [%s] failed!\r\n", __func__, filename);
         return -1;
     }
-    bytes = oc_fs_fread(buf, 1, sizeof(buf), fd);
+    bytes = oc_fs_fread(buf_temp, 1, sizeof(buf_temp), fd);
     if (bytes <= 0)
     {
         OC_UART_LOG_Printf("%s: read file error or file is empty!\r\n", __func__);
@@ -48,9 +50,10 @@ int oc_read_file(char *filename, char *buf)
     else
     {
         OC_UART_LOG_Printf("%s: read success! buf - %s, bytes - %d\r\n", __func__, buf, bytes);
+        memcpy(buf, buf_temp, bytes);
     }
-    return bytes;
     oc_fs_fclose(fd);
+    return bytes;
 }
 
 int oc_fs_demo(void)

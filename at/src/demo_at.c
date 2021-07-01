@@ -36,7 +36,6 @@ static void at_worker_thread(void * argv)
 	 	ret = OC_AT_Cmd(atcmd,respBuf, sizeof(respBuf));
 	 	OC_UART_LOG_Printf("cmd:%s, respBuf:%s\n", atcmd, respBuf);
 	 }
-	 
 }
 
 void customer_app_at_demo(void)

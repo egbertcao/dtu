@@ -8,8 +8,11 @@
 #include "oc_uart.h"
 #include "dtu_common.h"
 
-msg_t msg_buf[MAX_MSG];
+slave_msg_t msg_buf[MAX_MSG];
 dtu_config_t dtu_config;
+static unsigned int byte_count = 0;
+static char *g_serial_buf = NULL;
+static Bool receivedFlag = FALSE;
 unsigned int msg_count = 0;
 unsigned int slave_ids[MAX_SLAVE];
 unsigned int slave_count = 0;
@@ -19,19 +22,39 @@ static OSTaskRef MasterWorkerRef;
 ModBus_parameter* ModBus_Slave_paramater[MAX_SLAVE];
 
 void dtu_readfromuart(char *buf_ptr, size_t size)
-{
+{	
+	if(strstr(buf_ptr, "SetDeviceMode:modbusMode")) {
+		device_mode_write(MODBUS_MODE);
+	}
+	if(strstr(buf_ptr, "SetDeviceMode:configMode")) {
+		device_mode_write(CONFIG_MODE);
+	}
+
 	if(dtu_config.device_mode == MODBUS_MODE) {
-		int byte_count = 0;
-		for(byte_count = 0; byte_count < size; byte_count++){
-			int i =0;
+		int j = 0;
+		for(j = 0; j < size; j++){
+			int i = 0;
 			for(i=0; i<slave_count; i++){
-				ModBus_readByteFromOuter(ModBus_Slave_paramater[slave_ids[i]], buf_ptr[byte_count]);
+				ModBus_readByteFromOuter(ModBus_Slave_paramater[slave_ids[i]], buf_ptr[j]);
 			}
 		}
 	}
-	
 	if(dtu_config.device_mode == CONFIG_MODE) {
-		device_config(buf_ptr, size);
+		int i = 0;
+		for(i = 0; i < size; i++){
+			if(buf_ptr[i] == '+'){
+				receivedFlag = TRUE;
+				break;
+			}
+			g_serial_buf[byte_count++] = buf_ptr[i];
+		}
+		if(receivedFlag){
+			OC_UART_LOG_Printf("byte_count = %d\n", byte_count);
+			device_config(g_serial_buf, byte_count);
+			memset(g_serial_buf, 0, sizeof(g_serial_buf));
+			byte_count = 0;
+			receivedFlag = FALSE;
+		}
 	}
 }
 
@@ -84,7 +107,7 @@ static void modbus_master(void *parameter)
 
 void modbus_work()
 {
-	memset(msg_buf, 0, MAX_SLAVE*sizeof(msg_t));
+	memset(msg_buf, 0, MAX_SLAVE*sizeof(slave_msg_t));
 	msg_count = json_parse_file(msg_buf, slave_ids, &slave_count);
 	if (msg_count <= 0) {
 		OC_UART_LOG_Printf("json_parse_file error!\n");
@@ -143,9 +166,17 @@ void modbus_work()
 
 void customer_app_dtu_main(void)
 {
+	// 设备参数初始化
+	OC_UART_LOG_Printf("Device config init.\n");
+	device_config_init();
+	g_serial_buf = (char *)malloc(1024);
+	memset(g_serial_buf, 0, 1024);
+	
 	// 读取设备工作模式
 	dtu_config.device_mode = device_mode_read();
+	OC_UART_LOG_Printf("dtu_config.device_mode = %d\n", dtu_config.device_mode);
 	if(dtu_config.device_mode == MODBUS_MODE) {	
+		OC_UART_LOG_Printf("device is in modbus mode.\n");
 		modbus_work();
 	}
 }

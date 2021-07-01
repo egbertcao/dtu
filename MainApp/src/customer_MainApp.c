@@ -35,6 +35,9 @@ void Customer_App_Main(void *arg)
 	status = OSASemaphoreCreate(&customerAppSemaRef, 1, OSA_FIFO);
 	ASSERT(status == OS_SUCCESS);
 
+	
+
+	#if 1
 	OC_UART_LOG_Printf("dtu main start!\n");
 	customer_app_dtu_main();
 
@@ -44,7 +47,7 @@ void Customer_App_Main(void *arg)
 	OC_UART_LOG_Printf("mqtt Start!\n");
 	customer_app_mqtt_demo();
 
-	#if 0
+
 	OC_UART_LOG_Printf("alimqtt Start!\n");
 	customer_alimqtt_autoAck_demo();
 	#endif			

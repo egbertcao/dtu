@@ -7,25 +7,62 @@ typedef struct slave {
 	unsigned int r_address;
 	unsigned int count;
 	char function[10];
-} msg_t;
+} slave_msg_t;
+
+typedef struct deviceinfo {
+	char imei[20];
+	char imsi[20];
+} deviceinfo_t;
 
 typedef struct dtuconfig {
 	unsigned int device_mode;
 } dtu_config_t;
 
+typedef struct mqttconfig {
+	char clientid[20];
+	char username[20];
+	char password[20];
+	char address[20];
+	int port;
+	int version;
+} mqttconfig_t;
 
 enum Device_mode
 {
-	CONFIG_MODE,
+	CONFIG_MODE = 1,
 	MODBUS_MODE,
+};
+
+enum TransProto
+{
+	TRANS_SERIAL = 1,
+	TRANS_MQTT,
+	TRANS_TCP,
+	TRANS_UDP,
+	TRANS_HTTP,
+	TRNAS_ALI,
+};
+
+enum SerialFunctionCode {
+	SetDtuMode = 10,
+	GetDtuMode,
+	GetDeviceInfo,
+	SetModbusConfig,
+	GetModbusConfig,
+	SetMqttConfig,
+	GetMqttConfig,
 };
 
 
 #define MAX_SLAVE 20
 #define MAX_MSG 20
 
-
-#define MODBUS_JSON_FILE "modbusConfig.json"
 #define DTU_CONFIG_FILE "dtuConfig.json"
+#define MODBUS_INFO_FILE "modbusinfo"
+#define MQTT_CONFIG_FILE "mqttConfig.json"
 
+extern int oc_write_file(char *filename, char *buf);
+extern int oc_read_file(char *filename, char *buf);
+extern void send_to_server(int procotol, char *message);
+extern void device_info_get(deviceinfo_t *deviceinfo);
 #endif
