@@ -37,6 +37,38 @@ int device_mode_read()
     return device_mode;
 }
 
+void M_getdtumode() 
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON *item = NULL;
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetDtuMode));
+    char config_buf[50] = {0};
+    int read_ret = oc_read_file(DTU_CONFIG_FILE, config_buf);
+    if(read_ret > 0) {
+        item = cJSON_ParseWithLength(config_buf, read_ret);
+        cJSON_AddItemToObject(root, "msg", item);
+        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    }
+    free(item);
+    free(root);
+}
+
+void M_getdtudetail()
+{
+    deviceinfo_t deviceinfo;
+    device_info_get(&deviceinfo);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *item = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetDeviceInfo));
+    cJSON_AddItemToObject(item, "imei", cJSON_CreateString(deviceinfo.imei));
+    cJSON_AddItemToObject(item, "imsi", cJSON_CreateString(deviceinfo.imsi));
+    cJSON_AddItemToObject(root, "msg", item);
+    OC_UART_LOG_Printf("[%s] %s\n",__func__, cJSON_PrintUnformatted(root));
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    free(item);
+    free(root);
+}
+
 // 每条Modbus消息用一个文件存储，并创建一个节点文件存储信息
 void modbus_config_write(cJSON *array)
 {
@@ -75,7 +107,7 @@ void modbus_config_write(cJSON *array)
 void modbus_config_read()
 {
     int msgcount = 0;
-    char buf[20] = 0;
+    char buf[20] = {0};
     char modbusinfo_buf[1024] = {0};
     char filename[20] = {0};
     int read_ret = oc_read_file(MODBUS_INFO_FILE, buf);
@@ -106,7 +138,7 @@ void mqtt_config_write(cJSON *mqttConfig)
         char *config_buf = cJSON_PrintUnformatted(mqttConfig);
         int ret = oc_write_file(MQTT_CONFIG_FILE, config_buf);
         if(ret > 0) {
-            OC_UART_LOG_Printf("[%s] device_mode_write success.\n", __func__);
+            OC_UART_LOG_Printf("[%s] mqtt_config_write success.\n", __func__);
         }
     }
     else{
@@ -143,18 +175,6 @@ void mqtt_config_read(mqttconfig_t mqttConfig)
     free(root);
 }
 
-char *device_info_read()
-{
-    deviceinfo_t deviceinfo;
-    device_info_get(&deviceinfo);
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "imei", cJSON_CreateString(deviceinfo.imei));
-    cJSON_AddItemToObject(root, "imsi", cJSON_CreateString(deviceinfo.imsi));
-    char *deviceinfo_buf = cJSON_PrintUnformatted(root);
-    free(root);
-    return deviceinfo_buf;
-}
-
 // 与串口工具交互配置
 void device_config(char *serialdata, size_t size)
 {
@@ -165,24 +185,20 @@ void device_config(char *serialdata, size_t size)
     char config_buf[1024] = {0};
     
     OC_UART_LOG_Printf("[%s] %s\n",__func__, serialdata);
-    root = cJSON_Parse(serialdata);
+    root = cJSON_ParseWithLength(serialdata, size);
     if(!cJSON_IsObject(root)){
         OC_UART_LOG_Printf("[%s] serialdata is not json.\n",__func__);
         return;
     }
     int functionCode = (unsigned int)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "SerialFunction"));
-    OC_UART_LOG_Printf("[%s] functionCode = %d\n",__func__, functionCode);
+    
     switch (functionCode)
     {
     case GetDtuMode:
-        memset(config_buf, 0, sizeof(config_buf));
-        read_ret = oc_read_file(DTU_CONFIG_FILE, config_buf);
-        if(read_ret > 0) {
-            send_to_server(TRANS_SERIAL, config_buf);
-        }
+        M_getdtumode();
         break;
     case GetDeviceInfo:
-        send_to_server(TRANS_SERIAL, device_info_read()); 
+        M_getdtudetail();
         break;
     //{"serialFunction:13, "Msg":[{"slave_address":1, "register_address":3, "count":1, "function":"aaa","protocol":1},]}
     case SetModbusConfig:

@@ -1,5 +1,6 @@
 #ifndef _DUT_COMMON_H_
 #define _DUT_COMMON_H_
+#include "oc_pcac_fs.h"
 
 typedef struct slave {
 	unsigned int protocol;
@@ -31,6 +32,7 @@ enum Device_mode
 {
 	CONFIG_MODE = 1,
 	MODBUS_MODE,
+	PASSTHROUGH_MODE,
 };
 
 enum TransProto
@@ -51,6 +53,14 @@ enum SerialFunctionCode {
 	GetModbusConfig,
 	SetMqttConfig,
 	GetMqttConfig,
+	SetPassProtocol,
+	GetPassProtocol,
+	SetSerialSetting,
+	GetSerialSetting,
+	SetTcpSetting,
+	GetTcpSetting,
+	SetAliSetting,
+	GetAliSetting
 };
 
 
@@ -65,4 +75,9 @@ extern int oc_write_file(char *filename, char *buf);
 extern int oc_read_file(char *filename, char *buf);
 extern void send_to_server(int procotol, char *message);
 extern void device_info_get(deviceinfo_t *deviceinfo);
+extern int device_mode_read();
+extern void device_config_init();
+extern int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave_count);
+extern void device_config(char *serialdata, size_t size);
+extern void device_mode_write(int deviceMode);
 #endif

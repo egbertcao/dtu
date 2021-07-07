@@ -23,24 +23,31 @@ ModBus_parameter* ModBus_Slave_paramater[MAX_SLAVE];
 
 void dtu_readfromuart(char *buf_ptr, size_t size)
 {	
+	char buf[1024] = {0};
 	if(strstr(buf_ptr, "SetDeviceMode:modbusMode")) {
 		device_mode_write(MODBUS_MODE);
+		return;
 	}
 	if(strstr(buf_ptr, "SetDeviceMode:configMode")) {
 		device_mode_write(CONFIG_MODE);
+		return;
 	}
-
-	if(dtu_config.device_mode == MODBUS_MODE) {
-		int j = 0;
+	if(strstr(buf_ptr, "SetDeviceMode:passthroughMode")) {
+		device_mode_write(PASSTHROUGH_MODE);
+		return;
+	}
+	int j = 0, i = 0;
+	switch (dtu_config.device_mode)
+	{
+	case MODBUS_MODE:
 		for(j = 0; j < size; j++){
 			int i = 0;
 			for(i=0; i<slave_count; i++){
 				ModBus_readByteFromOuter(ModBus_Slave_paramater[slave_ids[i]], buf_ptr[j]);
 			}
 		}
-	}
-	if(dtu_config.device_mode == CONFIG_MODE) {
-		int i = 0;
+		break;
+	case CONFIG_MODE:
 		for(i = 0; i < size; i++){
 			if(buf_ptr[i] == '+'){
 				receivedFlag = TRUE;
@@ -50,11 +57,21 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 		}
 		if(receivedFlag){
 			OC_UART_LOG_Printf("byte_count = %d\n", byte_count);
+			OC_UART_LOG_Printf("[%s] %s\n", __func__, g_serial_buf);
 			device_config(g_serial_buf, byte_count);
-			memset(g_serial_buf, 0, sizeof(g_serial_buf));
+			memset(g_serial_buf, 0, 1024);
 			byte_count = 0;
 			receivedFlag = FALSE;
 		}
+		break;
+	case PASSTHROUGH_MODE:
+		memset(buf, 0, sizeof(buf));
+		memcpy(buf, buf_ptr, size);
+		send_to_server(TRANS_MQTT , buf);
+		break;
+	
+	default:
+		break;
 	}
 }
 
@@ -108,9 +125,9 @@ static void modbus_master(void *parameter)
 void modbus_work()
 {
 	memset(msg_buf, 0, MAX_SLAVE*sizeof(slave_msg_t));
-	msg_count = json_parse_file(msg_buf, slave_ids, &slave_count);
+	msg_count = get_modbus_slaves(msg_buf, slave_ids, &slave_count);
 	if (msg_count <= 0) {
-		OC_UART_LOG_Printf("json_parse_file error!\n");
+		OC_UART_LOG_Printf("get_modbus_slaves error!\n");
 		return;
 	}
 	int i = 0;

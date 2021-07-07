@@ -33,7 +33,7 @@ void arr_rpttn(int *pArr, int n)
 	return;
 }
 						  
-int json_parse_file(void *slaves, unsigned int *slave_ids, unsigned int *slave_count)
+int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave_count)
 {
 	cJSON *item = NULL;
 	unsigned int msg_count = 0;
@@ -82,10 +82,14 @@ int json_parse_file(void *slaves, unsigned int *slave_ids, unsigned int *slave_c
 
 void send_to_server(int procotol, char *message)
 {
+	int len = strlen(message);
+	char buf[1024] = {0};
+	memcpy(buf, message, len);
+	buf[len] = '\n';
 	switch (procotol)
 	{
 	case TRANS_MQTT:
-		OC_Mqtt_Publish("v1/devices/me/telemetry", 1, 0, message);
+		OC_Mqtt_Publish("v1/devices/me/telemetry", 1, 0, buf);
 		break;
 
 	case TRANS_TCP:
@@ -93,7 +97,7 @@ void send_to_server(int procotol, char *message)
 		break;
 
 	case TRANS_SERIAL:
-		OC_UART_Send(OC_UART_PORT_3, message, strlen(message));
+		OC_UART_Send(OC_UART_PORT_3, buf, len+1);
 		break;
 	
 	default:
