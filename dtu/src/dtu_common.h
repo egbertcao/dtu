@@ -3,11 +3,13 @@
 #include "oc_pcac_fs.h"
 
 typedef struct slave {
-	unsigned int protocol;
-	unsigned int s_address;
-	unsigned int r_address;
-	unsigned int count;
-	char function[10];
+	unsigned int protocol;      //采用什么方式传递到服务器
+	unsigned int function_code;	// 功能码
+	unsigned int s_address;		// 从机地址
+	unsigned int r_address;		// 寄存器地址
+	unsigned int count;			// 寄存器个数
+	char function[20];			// 功能定义
+	char data_deal[20];			// 数据处理方式
 } slave_msg_t;
 
 typedef struct deviceinfo {
@@ -27,6 +29,28 @@ typedef struct mqttconfig {
 	int port;
 	int version;
 } mqttconfig_t;
+
+typedef struct serialconfig {
+	unsigned int baudrate;
+	unsigned int databits;
+	unsigned int stopbits;
+	unsigned int parity;
+} serialconfig_t;
+
+typedef struct socketconfig {
+	char tcpaddress[20];
+	unsigned int tcpport;
+	char udpaddress[20];
+	unsigned int udpport;
+} socketconfig_t;
+
+typedef struct aliconfig {
+	char product_key[20];
+	char product_secret[20];
+	char device_name[20];
+	char device_secret[20];
+	unsigned int puback_mode;
+} aliconfig_t;
 
 enum Device_mode
 {
@@ -79,9 +103,15 @@ extern int oc_write_file(char *filename, char *buf);
 extern int oc_read_file(char *filename, char *buf);
 extern void send_to_server(int procotol, char *message);
 extern void device_info_get(deviceinfo_t *deviceinfo);
-extern int device_mode_read();
+extern int get_device_mode();
 extern void device_config_init();
 extern int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave_count);
 extern void device_config(char *serialdata, size_t size);
 extern void device_mode_write(int deviceMode);
+extern int get_passthrough_param();
+extern void get_ali_param(aliconfig_t aliConfig);
+extern void get_socket_param(socketconfig_t socketConfig);
+extern void get_serial_param(serialconfig_t serialConfig);
+extern void get_mqtt_param(mqttconfig_t mqttConfig);
+
 #endif

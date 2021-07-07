@@ -67,7 +67,7 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 	case PASSTHROUGH_MODE:
 		memset(buf, 0, sizeof(buf));
 		memcpy(buf, buf_ptr, size);
-		send_to_server(TRANS_MQTT , buf);
+		send_to_server(get_passthrough_param() , buf);
 		break;
 	
 	default:
@@ -190,7 +190,7 @@ void customer_app_dtu_main(void)
 	memset(g_serial_buf, 0, 1024);
 	
 	// 读取设备工作模式
-	dtu_config.device_mode = device_mode_read();
+	dtu_config.device_mode = get_device_mode();
 	OC_UART_LOG_Printf("dtu_config.device_mode = %d\n", dtu_config.device_mode);
 	if(dtu_config.device_mode == MODBUS_MODE) {	
 		OC_UART_LOG_Printf("device is in modbus mode.\n");

@@ -39,7 +39,7 @@ else
 PACKAGE_INC_PATHS   += ${BUILD_ROOT}\hal\oc_include 
 endif 
 
-PACKAGE_SRC_FILES = dtu_main.c cJSON.c dtu_data_parase.c dtu_tool_config.c dtu_device_info.c dtu_get_config.c
+PACKAGE_SRC_FILES = dtu_main.c cJSON.c dtu_to_server.c dtu_tool_config.c dtu_device_info.c dtu_get_config.c
 		
  
 # These are the tool flags specific to the GPIO package only.
