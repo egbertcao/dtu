@@ -37,7 +37,7 @@ int device_mode_read()
     return device_mode;
 }
 
-void M_getdtumode() 
+void tool_getdtumode() 
 {
     cJSON *root = cJSON_CreateObject();
     cJSON *item = NULL;
@@ -53,7 +53,7 @@ void M_getdtumode()
     free(root);
 }
 
-void M_getdtudetail()
+void tool_getdtudetail()
 {
     deviceinfo_t deviceinfo;
     device_info_get(&deviceinfo);
@@ -70,7 +70,7 @@ void M_getdtudetail()
 }
 
 // 每条Modbus消息用一个文件存储，并创建一个节点文件存储信息
-void modbus_config_write(cJSON *array)
+void tool_modbus_config_write(cJSON *array)
 {
     cJSON *item = NULL;
     char filename[20] = {0};
@@ -104,7 +104,7 @@ void modbus_config_write(cJSON *array)
     free(item);
 }
 
-void modbus_config_read()
+void tool_modbus_config_read()
 {
     int msgcount = 0;
     char buf[20] = {0};
@@ -114,11 +114,15 @@ void modbus_config_read()
     if(read_ret <= 0){
         return;
     }
-    cJSON *root = cJSON_ParseWithLength(buf, read_ret);
-	if(root != NULL) {
-        msgcount = cJSON_GetNumberValue(cJSON_GetObjectItem(root, "msgCount"));
+    cJSON *msgroot = cJSON_ParseWithLength(buf, read_ret);
+	if(msgroot != NULL) {
+        msgcount = cJSON_GetNumberValue(cJSON_GetObjectItem(msgroot, "msgCount"));
     }
 
+    cJSON *root = cJSON_CreateObject();
+    cJSON *array = cJSON_CreateArray();
+    cJSON *item = NULL;
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetModbusConfig));
     int i = 0;
     for(i = 0; i< msgcount; i++){
         memset(modbusinfo_buf, 0, sizeof(modbusinfo_buf));
@@ -126,25 +130,48 @@ void modbus_config_read()
         sprintf(filename, "modbusMsg%d", i);
         read_ret = oc_read_file(filename, modbusinfo_buf);
         if(read_ret > 0) {
-            send_to_server(TRANS_SERIAL, modbusinfo_buf);
+            item = cJSON_ParseWithLength(modbusinfo_buf, read_ret);
+            cJSON_AddItemToArray(array, item);
         }
     }
+    cJSON_AddItemToObject(root, "msg", array);
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    free(item);
+    free(array);
+    free(msgroot);
     free(root);
 }
 
-void mqtt_config_write(cJSON *mqttConfig)
+void tool_mqtt_config_write(cJSON *msg)
 {
-    if(cJSON_IsObject(mqttConfig)){
-        char *config_buf = cJSON_PrintUnformatted(mqttConfig);
-        int ret = oc_write_file(MQTT_CONFIG_FILE, config_buf);
-        if(ret > 0) {
-            OC_UART_LOG_Printf("[%s] mqtt_config_write success.\n", __func__);
-        }
+    if(!cJSON_IsObject(msg)){
+       OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+       return;
     }
-    else{
-        OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+    char *config_buf = cJSON_PrintUnformatted(msg);
+    int ret = oc_write_file(MQTT_CONFIG_FILE, config_buf);
+    if(ret > 0) {
+        OC_UART_LOG_Printf("[%s] tool_mqtt_config_write success.\n", __func__);
     }
 }
+
+void tool_mqtt_config_read()
+{
+    char config_buf[1024] = {0};
+    cJSON *root = cJSON_CreateObject();
+    cJSON *item = NULL;
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetMqttConfig));
+    memset(config_buf, 0, sizeof(config_buf));
+    int read_ret = oc_read_file(MQTT_CONFIG_FILE, config_buf);
+    if(read_ret > 0) {
+        item = cJSON_ParseWithLength(config_buf, read_ret);
+        cJSON_AddItemToObject(root, "msg", item);
+        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    }
+    free(item);
+    free(root);
+}
+       
 
 void mqtt_config_read(mqttconfig_t mqttConfig)
 {
@@ -175,6 +202,139 @@ void mqtt_config_read(mqttconfig_t mqttConfig)
     free(root);
 }
 
+void tool_pass_config_write(cJSON *msg)
+{
+    if(!cJSON_IsObject(msg)){
+        OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+        return;
+    }
+    char *config_buf = cJSON_PrintUnformatted(msg);
+    OC_UART_LOG_Printf("%s\n", config_buf);
+    int write_ret = oc_write_file(PASS_CONFIG_FILE, config_buf);
+    if(write_ret > 0) {
+        OC_UART_LOG_Printf("[%s] tool_pass_config_write success.\n", __func__);
+    }
+}
+
+void tool_pass_config_read()
+{
+    char config_buf[1024] = {0};
+    cJSON *root = cJSON_CreateObject();
+    cJSON *item = NULL;
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetPassProtocol));
+    memset(config_buf, 0, sizeof(config_buf));
+    int read_ret = oc_read_file(PASS_CONFIG_FILE, config_buf);
+    if(read_ret > 0) {
+        item = cJSON_ParseWithLength(config_buf, read_ret);
+        cJSON_AddItemToObject(root, "msg", item);
+        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    }
+    free(item);
+    free(root);
+}
+
+void tool_serial_config_write(cJSON *msg)
+{
+    if(!cJSON_IsObject(msg)){
+        OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+        return;
+    }
+    char *config_buf = cJSON_PrintUnformatted(msg);
+    OC_UART_LOG_Printf("%s\n", config_buf);
+    int write_ret = oc_write_file(SERIAL_CONFIG_FILE, config_buf);
+    if(write_ret > 0) {
+        OC_UART_LOG_Printf("[%s] tool_pass_config_write success.\n", __func__);
+    }
+}
+void tool_serial_config_read()
+{
+    char config_buf[1024] = {0};
+    cJSON *root = cJSON_CreateObject();
+    cJSON *item = NULL;
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetSerialSetting));
+    memset(config_buf, 0, sizeof(config_buf));
+    int read_ret = oc_read_file(SERIAL_CONFIG_FILE, config_buf);
+    if(read_ret > 0) {
+        item = cJSON_ParseWithLength(config_buf, read_ret);
+        cJSON_AddItemToObject(root, "msg", item);
+        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    }
+    free(item);
+    free(root);
+}
+
+
+void tool_tcp_config_write(cJSON *msg)
+{
+    if(!cJSON_IsObject(msg)){
+        OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+        return;
+    }
+    
+    int tcpudp = cJSON_GetNumberValue(cJSON_GetObjectItem(msg, "tcpudp"));
+    char *config_buf = cJSON_PrintUnformatted(msg);
+    OC_UART_LOG_Printf("%s\n", config_buf);
+    char filename[20] = {0};
+    sprintf(filename, "%s_%d", SOCKET_CONFIG_FILE, tcpudp);
+    int write_ret = oc_write_file(filename, config_buf);
+    if(write_ret > 0) {
+        OC_UART_LOG_Printf("[%s] tool_pass_config_write success.\n", __func__);
+    }
+}
+void tool_tcp_config_read(cJSON *msg)
+{
+    if(!cJSON_IsObject(msg)){
+        OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+        return;
+    }
+    char config_buf[1024] = {0};
+    cJSON *root = cJSON_CreateObject();
+    cJSON *item = NULL;
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetTcpSetting));
+    memset(config_buf, 0, sizeof(config_buf));
+    int tcpudp = cJSON_GetNumberValue(cJSON_GetObjectItem(msg, "tcpudp"));
+    char filename[20] = {0};
+    sprintf(filename, "%s_%d", SOCKET_CONFIG_FILE, tcpudp);
+    int read_ret = oc_read_file(filename, config_buf);
+    if(read_ret > 0) {
+        item = cJSON_ParseWithLength(config_buf, read_ret);
+        cJSON_AddItemToObject(root, "msg", item);
+        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    }
+    free(item);
+    free(root);
+}
+
+void tool_ali_config_write(cJSON *msg)
+{
+    if(!cJSON_IsObject(msg)){
+        OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+        return;
+    }
+    char *config_buf = cJSON_PrintUnformatted(msg);
+    OC_UART_LOG_Printf("%s\n", config_buf);
+    int write_ret = oc_write_file(ALI_CONFIG_FILE, config_buf);
+    if(write_ret > 0) {
+        OC_UART_LOG_Printf("[%s] tool_pass_config_write success.\n", __func__);
+    }
+}
+void tool_ali_config_read()
+{
+    char config_buf[1024] = {0};
+    cJSON *root = cJSON_CreateObject();
+    cJSON *item = NULL;
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetAliSetting));
+    memset(config_buf, 0, sizeof(config_buf));
+    int read_ret = oc_read_file(ALI_CONFIG_FILE, config_buf);
+    if(read_ret > 0) {
+        item = cJSON_ParseWithLength(config_buf, read_ret);
+        cJSON_AddItemToObject(root, "msg", item);
+        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    }
+    free(item);
+    free(root);
+}
+
 // 与串口工具交互配置
 void device_config(char *serialdata, size_t size)
 {
@@ -195,31 +355,53 @@ void device_config(char *serialdata, size_t size)
     switch (functionCode)
     {
     case GetDtuMode:
-        M_getdtumode();
+        tool_getdtumode();
         break;
     case GetDeviceInfo:
-        M_getdtudetail();
+        tool_getdtudetail();
         break;
-    //{"serialFunction:13, "Msg":[{"slave_address":1, "register_address":3, "count":1, "function":"aaa","protocol":1},]}
     case SetModbusConfig:
         msg = cJSON_GetObjectItem(root, "msg");
-        if (NULL != msg){
-            modbus_config_write(msg);
-        }
+        tool_modbus_config_write(msg);
         break;
     case GetModbusConfig:
-        modbus_config_read();
+        tool_modbus_config_read();
         break;
     case SetMqttConfig:
         msg = cJSON_GetObjectItem(root, "msg");
-        mqtt_config_write(msg);
+        tool_mqtt_config_write(msg);
         break;
     case GetMqttConfig:
-        memset(config_buf, 0, sizeof(config_buf));
-        read_ret = oc_read_file(MQTT_CONFIG_FILE, config_buf);
-        if(read_ret > 0) {
-            send_to_server(TRANS_SERIAL, config_buf);
-        }
+        tool_mqtt_config_read();
+        break;
+    case SetPassProtocol:
+        msg = cJSON_GetObjectItem(root, "msg");
+        tool_pass_config_write(msg);
+        break;
+    case GetPassProtocol:
+        tool_pass_config_read();
+        break;
+    case SetSerialSetting:
+        msg = cJSON_GetObjectItem(root, "msg");
+        tool_serial_config_write(msg);
+        break;
+    case GetSerialSetting:
+        tool_serial_config_read();
+        break;
+    case SetTcpSetting:
+        msg = cJSON_GetObjectItem(root, "msg");
+        tool_tcp_config_write(msg);
+        break;
+    case GetTcpSetting:
+        msg = cJSON_GetObjectItem(root, "msg");
+        tool_tcp_config_read(msg);
+        break;
+    case SetAliSetting:
+        msg = cJSON_GetObjectItem(root, "msg");
+        tool_ali_config_write(msg);
+        break;
+    case GetAliSetting:
+        tool_ali_config_read();
         break;
     default:
         break;
@@ -251,7 +433,7 @@ void device_config_init()
         OC_UART_LOG_Printf("%s\n", mqttbuf);
         int write_ret = oc_write_file(MQTT_CONFIG_FILE, mqttbuf);
         if(write_ret > 0) {
-            OC_UART_LOG_Printf("mqtt_config_write success.\n");
+            OC_UART_LOG_Printf("mqtt init success.\n");
         }
         free(mqttroot);
     }

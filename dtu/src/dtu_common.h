@@ -70,6 +70,10 @@ enum SerialFunctionCode {
 #define DTU_CONFIG_FILE "dtuConfig.json"
 #define MODBUS_INFO_FILE "modbusinfo"
 #define MQTT_CONFIG_FILE "mqttConfig.json"
+#define PASS_CONFIG_FILE "passconfig.json"
+#define SERIAL_CONFIG_FILE "serialconfig.json"
+#define SOCKET_CONFIG_FILE "sockerconfig.json"
+#define ALI_CONFIG_FILE "aliconfig.json"
 
 extern int oc_write_file(char *filename, char *buf);
 extern int oc_read_file(char *filename, char *buf);
