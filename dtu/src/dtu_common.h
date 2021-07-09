@@ -20,6 +20,8 @@ typedef struct deviceinfo {
 	char iccid[100];
 	char csq[100];
 	char creg[100];
+	char longitude[30];
+    char latitude[30];
 } deviceinfo_t;
 
 typedef struct dtuconfig {

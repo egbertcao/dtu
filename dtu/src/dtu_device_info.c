@@ -4,6 +4,8 @@
 #include "oc_at.h"
 #include "osa.h"
 #include "oc_pcac_fs.h"
+#include "oc_location.h"
+
 
 static void delete_char(char str[],char target){
 	int i,j;
@@ -127,6 +129,12 @@ static void device_creg_get(char *creg)
 void device_info_get(deviceinfo_t *deviceinfo)
 {
     memset(deviceinfo, 0, sizeof(deviceinfo_t));
+    Oc_Loc_Info location_info;
+    memset(&location_info, 0, sizeof(Oc_Loc_Info));
+    int bRet = OC_GetLocation(&location_info);
+	OC_UART_LOG_Printf("bRet:%d, %s,%s\n", bRet, location_info.longitude,location_info.latitude);
+    memcpy(deviceinfo->latitude, location_info.latitude, sizeof(location_info.latitude));
+    memcpy(deviceinfo->longitude, location_info.longitude, sizeof(location_info.longitude));
     device_imei_get(deviceinfo->imei);
     device_imsi_get(deviceinfo->imsi);
     device_cgmr_get(deviceinfo->cgmr);

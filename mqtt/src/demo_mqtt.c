@@ -69,10 +69,32 @@ void mqtt_worker_thread(void * argv)
 	OC_Mqtt_Subscribe("modbus_set",0);
 	OC_Mqtt_Subscribe("modbus_get",0);
 
+	// 发送设备基本信息
+	deviceinfo_t deviceinfo;
+    device_info_get(&deviceinfo);
+	cJSON *telemetry = NULL;
+	cJSON *attributes = cJSON_CreateObject();
+	cJSON_AddItemToObject(attributes, "imei", cJSON_CreateString(deviceinfo.imei));
+    cJSON_AddItemToObject(attributes, "imsi", cJSON_CreateString(deviceinfo.imsi));
+    cJSON_AddItemToObject(attributes, "iccid", cJSON_CreateString(deviceinfo.iccid));
+	cJSON_AddItemToObject(attributes, "cgmr", cJSON_CreateString(deviceinfo.cgmr));
+	OC_Mqtt_Publish("v1/devices/me/attributes", 0, 0, cJSON_PrintUnformatted(attributes));
+	free(attributes);
+
 	while(bRun)
 	{
-		OSATaskSleep(2000);
+		// 循环发送
+		deviceinfo_t deviceinfo;
+		device_info_get(&deviceinfo);
+		cJSON *telemetry = cJSON_CreateObject();
+		cJSON_AddItemToObject(telemetry, "latitude", cJSON_CreateString(deviceinfo.latitude));
+		cJSON_AddItemToObject(telemetry, "longitude", cJSON_CreateString(deviceinfo.longitude));
+		cJSON_AddItemToObject(telemetry, "csq", cJSON_CreateString(deviceinfo.csq));
+		cJSON_AddItemToObject(telemetry, "creg", cJSON_CreateString(deviceinfo.creg));
+		OC_Mqtt_Publish("v1/devices/me/telemetry", 0, 0, cJSON_PrintUnformatted(telemetry));
+		OSATaskSleep(10000);
 	}
+	free(telemetry);
 }
 
 void customer_app_mqtt_demo(void)
