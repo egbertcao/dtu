@@ -8,6 +8,7 @@
 #include "oc_mqtt.h"
 #include "osa.h"
 #include "modbus.h"
+#include "dtu_common.h"
 
 OSATaskRef customerUartRxTaskRef;
 UINT8* customerUartRxTaskStack;
@@ -34,12 +35,19 @@ static void demo_uart_callback(void *user_data, OC_UART_Event uart_evt)
 
 void uart_init()
 {
+	// 读取串口配置信息，得到串口波特率
+	serialconfig_t currentserial;
+	if(get_serial_param(currentserial) < 0){
+		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
+		return;
+	}
+
 	OC_UARTConfiguration *uartDemoConfiguration;
 	uartDemoConfiguration =(OC_UARTConfiguration *)malloc(sizeof(OC_UARTConfiguration));
-	uartDemoConfiguration->oc_baudRate = OC_UART_BAUD_115200;
-	uartDemoConfiguration->oc_numDataBits = OC_UART_WORD_LEN_8;
-	uartDemoConfiguration->oc_parityBitType = OC_UART_NO_PARITY_BITS;
-	uartDemoConfiguration->oc_stopBits = OC_UART_ONE_STOP_BIT;
+	uartDemoConfiguration->oc_baudRate = currentserial.baudrate;
+	uartDemoConfiguration->oc_numDataBits = currentserial.databits;
+	uartDemoConfiguration->oc_parityBitType = currentserial.parity;
+	uartDemoConfiguration->oc_stopBits = currentserial.stopbits;
 	uartDemoConfiguration->oc_flowControl = FALSE;
 	uartDemoConfiguration->oc_auto_baud = FALSE;
 	uartDemoConfiguration->callback = demo_uart_callback;

@@ -1,6 +1,7 @@
 #ifndef _DUT_COMMON_H_
 #define _DUT_COMMON_H_
 #include "oc_pcac_fs.h"
+#include "cJSON.h"
 
 typedef struct slave {
 	unsigned int protocol;      //采用什么方式传递到服务器
@@ -15,6 +16,10 @@ typedef struct slave {
 typedef struct deviceinfo {
 	char imei[20];
 	char imsi[20];
+	char cgmr[100];
+	char iccid[100];
+	char csq[100];
+	char creg[100];
 } deviceinfo_t;
 
 typedef struct dtuconfig {
@@ -109,9 +114,13 @@ extern int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int
 extern void device_config(char *serialdata, size_t size);
 extern void device_mode_write(int deviceMode);
 extern int get_passthrough_param();
-extern void get_ali_param(aliconfig_t aliConfig);
-extern void get_socket_param(socketconfig_t socketConfig);
-extern void get_serial_param(serialconfig_t serialConfig);
-extern void get_mqtt_param(mqttconfig_t mqttConfig);
+extern int get_ali_param(aliconfig_t aliConfig);
+extern int get_socket_param(socketconfig_t socketConfig);
+extern int get_serial_param(serialconfig_t serialConfig);
+extern int get_mqtt_param(mqttconfig_t mqttConfig);
+extern void tool_mqtt_config_write(cJSON *msg);
+extern void tool_pass_config_write(cJSON *msg);
+extern void tool_serial_config_write(cJSON *msg);
+extern void tool_tcp_config_write(cJSON *msg);
 
 #endif

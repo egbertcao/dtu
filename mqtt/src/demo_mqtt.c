@@ -3,6 +3,7 @@
 #include "oc_mqtt.h"
 #include "osa.h"
 #include "oc_uart.h"
+#include "dtu_common.h"
 
 static OSTaskRef demoWorkerRef;
 static BOOL bRun = FALSE;
@@ -42,10 +43,15 @@ void mqtt_worker_thread(void * argv)
 		OSATaskSleep(100);
 		
 	}
+	mqttconfig_t currentmqtt;
+	if(get_mqtt_param(currentmqtt) < 0){
+		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
+		return;
+	}
 	OC_UART_LOG_Printf("%s:Open  network Success!\n", __func__);
 	OC_Mqtt_URCRegister(mqtt_recv_cb,mqtt_event_cb);
-	OC_Mqtt_Config("mydtu","TDUo61LWtKGcgwtpdXTr","");
-	OC_Mqtt_Ipstart("182.61.41.198", 1883, 4);
+	OC_Mqtt_Config(currentmqtt.clientid,currentmqtt.username,currentmqtt.password);
+	OC_Mqtt_Ipstart(currentmqtt.address, currentmqtt.port, currentmqtt.version);
 	OC_Mqtt_Connect(1, 60);
 	OSATaskSleep(100);
 	while(bRun)

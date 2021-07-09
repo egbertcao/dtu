@@ -108,7 +108,7 @@ int get_device_mode()
     return device_mode;
 }
 
-void get_mqtt_param(mqttconfig_t mqttConfig)
+int get_mqtt_param(mqttconfig_t mqttConfig)
 {
     memset(read_buf,0,512);
     int read_ret = oc_read_file(MQTT_CONFIG_FILE, read_buf);
@@ -136,12 +136,12 @@ void get_mqtt_param(mqttconfig_t mqttConfig)
     free(root);
 }
 
-void get_serial_param(serialconfig_t serialConfig)
+int get_serial_param(serialconfig_t serialConfig)
 {
     memset(read_buf,0,512);
     int read_ret = oc_read_file(SERIAL_CONFIG_FILE, read_buf);
     if(read_ret < 0){
-		return;
+		return -1;
 	}
 
     cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
@@ -152,9 +152,10 @@ void get_serial_param(serialconfig_t serialConfig)
         serialConfig.parity = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_Parity"));      
     }
     free(root);
+    return 0;
 }
 
-void get_socket_param(socketconfig_t socketConfig)
+int get_socket_param(socketconfig_t socketConfig)
 {
     memset(read_buf,0,512);
     cJSON *root = NULL;
@@ -183,7 +184,7 @@ void get_socket_param(socketconfig_t socketConfig)
     free(root);
 }
 
-void get_ali_param(aliconfig_t aliConfig)
+int get_ali_param(aliconfig_t aliConfig)
 {
     memset(read_buf, 0 ,512);
     int read_ret = oc_read_file(ALI_CONFIG_FILE, read_buf);
@@ -223,6 +224,57 @@ int get_passthrough_param()
     return protocol;
 }
 
+void mqtt_param_init()
+{
+    deviceinfo_t deviceinfo;
+    device_info_get(&deviceinfo);
+    cJSON *mqttroot = cJSON_CreateObject();
+    cJSON_AddItemToObject(mqttroot, "clientid", cJSON_CreateString(deviceinfo.imei));
+    cJSON_AddItemToObject(mqttroot, "username", cJSON_CreateString(deviceinfo.imei));
+    cJSON_AddItemToObject(mqttroot, "password", cJSON_CreateString(""));
+    cJSON_AddItemToObject(mqttroot, "address", cJSON_CreateString("182.61.41.198"));
+    cJSON_AddItemToObject(mqttroot, "port", cJSON_CreateNumber(1883));
+    cJSON_AddItemToObject(mqttroot, "version", cJSON_CreateNumber(4));
+    tool_mqtt_config_write(mqttroot);
+    free(mqttroot);
+}
+
+void serial_param_init()
+{
+    cJSON *serialroot = cJSON_CreateObject();
+    cJSON_AddItemToObject(serialroot, "serialSeting_baud", cJSON_CreateNumber(OC_UART_BAUD_115200));
+    cJSON_AddItemToObject(serialroot, "serialSeting_data", cJSON_CreateNumber(OC_UART_WORD_LEN_8));
+    cJSON_AddItemToObject(serialroot, "serialSeting_stop", cJSON_CreateNumber(OC_UART_ONE_STOP_BIT));
+    cJSON_AddItemToObject(serialroot, "serialSeting_Parity", cJSON_CreateNumber(OC_UART_NO_PARITY_BITS));
+    tool_serial_config_write(serialroot);
+    free(serialroot);
+}
+
+void tcp_param_init()
+{
+    cJSON *tcproot = cJSON_CreateObject();
+    cJSON_AddItemToObject(tcproot, "ip_address", cJSON_CreateString("182.61.41.198"));
+    cJSON_AddItemToObject(tcproot, "ip_port", cJSON_CreateNumber(8012));
+    cJSON_AddItemToObject(tcproot, "tcpudp", cJSON_CreateNumber(1));
+    tool_tcp_config_write(tcproot);
+    cJSON *udproot = cJSON_CreateObject();
+    cJSON_AddItemToObject(udproot, "ip_address", cJSON_CreateString("182.61.41.198"));
+    cJSON_AddItemToObject(udproot, "ip_port", cJSON_CreateNumber(8013));
+    cJSON_AddItemToObject(udproot, "tcpudp", cJSON_CreateNumber(2));
+    tool_tcp_config_write(udproot);
+    free(tcproot);
+    free(udproot);
+}
+
+void pass_param_init()
+{
+    cJSON *passroot = cJSON_CreateObject();
+    cJSON_AddItemToObject(passroot, "passProtocol", cJSON_CreateNumber(2));
+    tool_pass_config_write(passroot);
+    free(passroot);
+}
+
+
 // 初次启动，创建配置文件
 void device_config_init()
 {
@@ -235,26 +287,9 @@ void device_config_init()
     int ret = oc_read_file(DTU_CONFIG_FILE, read_buf);
 	if(ret <= 0){
 		device_mode_write(CONFIG_MODE);
-
-        deviceinfo_t deviceinfo;
-        device_info_get(&deviceinfo);
-        
-        // mqtt init
-        cJSON *mqttroot = cJSON_CreateObject();
-        cJSON_AddItemToObject(mqttroot, "clientid", cJSON_CreateString(deviceinfo.imei));
-        cJSON_AddItemToObject(mqttroot, "username", cJSON_CreateString(deviceinfo.imei));
-        cJSON_AddItemToObject(mqttroot, "password", cJSON_CreateString(""));
-        cJSON_AddItemToObject(mqttroot, "address", cJSON_CreateString("182.61.41.198"));
-        cJSON_AddItemToObject(mqttroot, "port", cJSON_CreateNumber(1883));
-        cJSON_AddItemToObject(mqttroot, "version", cJSON_CreateNumber(4));
-        char *mqttbuf = cJSON_PrintUnformatted(mqttroot);
-        OC_UART_LOG_Printf("%s\n", mqttbuf);
-        int write_ret = oc_write_file(MQTT_CONFIG_FILE, mqttbuf);
-        if(write_ret > 0) {
-            OC_UART_LOG_Printf("mqtt init success.\n");
-        }
-        free(mqttroot);
-
-        // serial init
+        mqtt_param_init();
+        serial_param_init();
+        tcp_param_init();
+        pass_param_init();
     }
 }

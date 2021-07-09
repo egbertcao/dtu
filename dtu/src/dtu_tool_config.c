@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "oc_pcac_fs.h"
 #include "oc_uart.h"
+#include "oc_location.h"
 
 static char *read_buf = NULL;
 static unsigned read_flag = 0;
@@ -44,9 +45,18 @@ void tool_getdtudetail()
     device_info_get(&deviceinfo);
     cJSON *root = cJSON_CreateObject();
     cJSON *item = cJSON_CreateObject();
+    Oc_Loc_Info location_info;
+    memset(&location_info, 0, sizeof(Oc_Loc_Info));
+    int bRet = OC_GetLocation(&location_info);
+	OC_UART_LOG_Printf("bRet:%d, %s,%s\n", bRet, location_info.longitude,location_info.latitude);
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetDeviceInfo));
     cJSON_AddItemToObject(item, "imei", cJSON_CreateString(deviceinfo.imei));
     cJSON_AddItemToObject(item, "imsi", cJSON_CreateString(deviceinfo.imsi));
+    cJSON_AddItemToObject(item, "cgmr", cJSON_CreateString(deviceinfo.cgmr));
+    cJSON_AddItemToObject(item, "csq", cJSON_CreateString(deviceinfo.csq));
+    cJSON_AddItemToObject(item, "iccid", cJSON_CreateString(deviceinfo.iccid));
+    cJSON_AddItemToObject(item, "longitude", cJSON_CreateString(location_info.longitude));
+    cJSON_AddItemToObject(item, "latitude", cJSON_CreateString(location_info.latitude));
     cJSON_AddItemToObject(root, "msg", item);
     OC_UART_LOG_Printf("[%s] %s\n",__func__, cJSON_PrintUnformatted(root));
     send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
