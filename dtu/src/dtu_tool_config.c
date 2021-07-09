@@ -6,6 +6,9 @@
 #include "oc_pcac_fs.h"
 #include "oc_uart.h"
 
+static char *read_buf = NULL;
+static unsigned read_flag = 0;
+
 void device_mode_write(int deviceMode)
 {
     cJSON *root = cJSON_CreateObject();
@@ -21,16 +24,16 @@ void device_mode_write(int deviceMode)
 
 void tool_getdtumode() 
 {
-    cJSON *root = cJSON_CreateObject();
-    cJSON *item = NULL;
-    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetDtuMode));
-    char config_buf[50] = {0};
-    int read_ret = oc_read_file(DTU_CONFIG_FILE, config_buf);
-    if(read_ret > 0) {
-        item = cJSON_ParseWithLength(config_buf, read_ret);
-        cJSON_AddItemToObject(root, "msg", item);
-        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    memset(read_buf, 0, 512);
+    int read_ret = oc_read_file(DTU_CONFIG_FILE, read_buf);
+    if (read_ret <= 0){
+        return;
     }
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetDtuMode));
+    cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
+    cJSON_AddItemToObject(root, "msg", item);
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -89,39 +92,50 @@ void tool_modbus_config_write(cJSON *array)
 void tool_modbus_config_read()
 {
     int msgcount = 0;
-    char buf[20] = {0};
-    char modbusinfo_buf[1024] = {0};
-    char filename[20] = {0};
-    int read_ret = oc_read_file(MODBUS_INFO_FILE, buf);
+    memset(read_buf, 0, 512);
+    OC_UART_LOG_Printf("[%s]\n", __func__);
+    int read_ret = oc_read_file(MODBUS_INFO_FILE, read_buf);
     if(read_ret <= 0){
         return;
     }
-    cJSON *msgroot = cJSON_ParseWithLength(buf, read_ret);
+    OC_UART_LOG_Printf("[%s] %s\n", __func__, read_buf);
+    cJSON *msgroot = cJSON_ParseWithLength(read_buf, read_ret);
 	if(msgroot != NULL) {
         msgcount = cJSON_GetNumberValue(cJSON_GetObjectItem(msgroot, "msgCount"));
+        OC_UART_LOG_Printf("[%s] msgcount = %d\n", __func__, msgcount);
     }
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *array = cJSON_CreateArray();
+    free(msgroot);
+#if 1
     cJSON *item = NULL;
+    cJSON *root = cJSON_CreateObject();
+    if(!cJSON_IsObject(root)) {
+        OC_UART_LOG_Printf("cJSON create failed.\n");
+        return;
+    }
+    cJSON *array = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetModbusConfig));
     int i = 0;
-    for(i = 0; i< msgcount; i++){
-        memset(modbusinfo_buf, 0, sizeof(modbusinfo_buf));
+    for(i = 0; i< msgcount; i++){  
+        char filename[20] = {0};
+        memset(read_buf, 0, 512);
         memset(filename, 0, sizeof(filename));
         sprintf(filename, "modbusMsg%d", i);
-        read_ret = oc_read_file(filename, modbusinfo_buf);
-        if(read_ret > 0) {
-            item = cJSON_ParseWithLength(modbusinfo_buf, read_ret);
-            cJSON_AddItemToArray(array, item);
+        OC_UART_LOG_Printf("[%s] filename = %s\n", __func__, filename);
+        read_ret = oc_read_file(filename, read_buf);
+        if(read_ret <= 0){
+            return;
         }
+        OC_UART_LOG_Printf("[%s]  %s\n", __func__, read_buf);
+        item = cJSON_ParseWithLength(read_buf, read_ret);
+        cJSON_AddItemToArray(array, item);
     }
     cJSON_AddItemToObject(root, "msg", array);
     send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
-    free(item);
-    free(array);
-    free(msgroot);
+    if(NULL != item) {
+        free(item);
+    }
     free(root);
+#endif
 }
 
 void tool_mqtt_config_write(cJSON *msg)
@@ -139,18 +153,16 @@ void tool_mqtt_config_write(cJSON *msg)
 
 void tool_mqtt_config_read()
 {
-    char config_buf[1024] = {0};
-    cJSON *root = cJSON_CreateObject();
-    cJSON *item = NULL;
-    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetMqttConfig));
-    memset(config_buf, 0, sizeof(config_buf));
-    int read_ret = oc_read_file(MQTT_CONFIG_FILE, config_buf);
-    if(read_ret > 0) {
-        item = cJSON_ParseWithLength(config_buf, read_ret);
-        cJSON_AddItemToObject(root, "msg", item);
-        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    memset(read_buf, 0, 512);
+    int read_ret = oc_read_file(MQTT_CONFIG_FILE, read_buf);
+    if(read_ret <= 0){
+        return;
     }
-    free(item);
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetMqttConfig));
+    cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
+    cJSON_AddItemToObject(root, "msg", item);
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
     free(root);
 }
        
@@ -170,18 +182,17 @@ void tool_pass_config_write(cJSON *msg)
 
 void tool_pass_config_read()
 {
-    char config_buf[1024] = {0};
-    cJSON *root = cJSON_CreateObject();
-    cJSON *item = NULL;
-    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetPassProtocol));
-    memset(config_buf, 0, sizeof(config_buf));
-    int read_ret = oc_read_file(PASS_CONFIG_FILE, config_buf);
-    if(read_ret > 0) {
-        item = cJSON_ParseWithLength(config_buf, read_ret);
-        cJSON_AddItemToObject(root, "msg", item);
-        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    memset(read_buf, 0, 512);
+    int read_ret = oc_read_file(PASS_CONFIG_FILE, read_buf);
+    if(read_ret <= 0){
+        return;
     }
-    free(item);
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetPassProtocol));
+    cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
+    cJSON_AddItemToObject(root, "msg", item);
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    free(item); 
     free(root);
 }
 
@@ -200,17 +211,16 @@ void tool_serial_config_write(cJSON *msg)
 }
 void tool_serial_config_read()
 {
-    char config_buf[1024] = {0};
-    cJSON *root = cJSON_CreateObject();
-    cJSON *item = NULL;
-    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetSerialSetting));
-    memset(config_buf, 0, sizeof(config_buf));
-    int read_ret = oc_read_file(SERIAL_CONFIG_FILE, config_buf);
-    if(read_ret > 0) {
-        item = cJSON_ParseWithLength(config_buf, read_ret);
-        cJSON_AddItemToObject(root, "msg", item);
-        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    memset(read_buf, 0, 512);
+    int read_ret = oc_read_file(SERIAL_CONFIG_FILE, read_buf);
+    if(read_ret <= 0){
+        return;
     }
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetSerialSetting));
+    cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
+    cJSON_AddItemToObject(root, "msg", item);
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -239,20 +249,19 @@ void tool_tcp_config_read(cJSON *msg)
         OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
         return;
     }
-    char config_buf[1024] = {0};
-    cJSON *root = cJSON_CreateObject();
-    cJSON *item = NULL;
-    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetTcpSetting));
-    memset(config_buf, 0, sizeof(config_buf));
+    memset(read_buf, 0, 512);
     int tcpudp = cJSON_GetNumberValue(cJSON_GetObjectItem(msg, "tcpudp"));
     char filename[20] = {0};
     sprintf(filename, "%s_%d", SOCKET_CONFIG_FILE, tcpudp);
-    int read_ret = oc_read_file(filename, config_buf);
-    if(read_ret > 0) {
-        item = cJSON_ParseWithLength(config_buf, read_ret);
-        cJSON_AddItemToObject(root, "msg", item);
-        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    int read_ret = oc_read_file(filename, read_buf);
+    if(read_ret <= 0){
+        return;
     }
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetTcpSetting));
+    cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
+    cJSON_AddItemToObject(root, "msg", item);
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -272,17 +281,16 @@ void tool_ali_config_write(cJSON *msg)
 }
 void tool_ali_config_read()
 {
-    char config_buf[1024] = {0};
-    cJSON *root = cJSON_CreateObject();
-    cJSON *item = NULL;
-    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetAliSetting));
-    memset(config_buf, 0, sizeof(config_buf));
-    int read_ret = oc_read_file(ALI_CONFIG_FILE, config_buf);
-    if(read_ret > 0) {
-        item = cJSON_ParseWithLength(config_buf, read_ret);
-        cJSON_AddItemToObject(root, "msg", item);
-        send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    memset(read_buf, 0, 512);
+    int read_ret = oc_read_file(ALI_CONFIG_FILE, read_buf);
+    if(read_ret <= 0){
+        return;
     }
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetAliSetting));
+    cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
+    cJSON_AddItemToObject(root, "msg", item);
+    send_to_server(TRANS_SERIAL, cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -294,7 +302,16 @@ void device_config(char *serialdata, size_t size)
     cJSON *root = NULL;
     int read_ret = 0;
     int dtuMode = 0;
-    char config_buf[1024] = {0};
+    if(read_flag == 0){
+        read_buf = (char *)malloc(512);
+        if(read_buf == NULL){
+            OC_UART_LOG_Printf("[%s] malloc failed.\n",__func__);
+            return;
+        }
+        OC_UART_LOG_Printf("[%s] malloc success.\n",__func__);
+        read_flag = 1;
+    }
+    memset(read_buf, 0, 512);
     
     OC_UART_LOG_Printf("[%s] %s\n",__func__, serialdata);
     root = cJSON_ParseWithLength(serialdata, size);

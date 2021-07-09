@@ -9,6 +9,9 @@
 #include "osa.h"
 #include "modbus.h"
 
+static char *read_buf = NULL;
+static unsigned read_flag = 0;
+
 void arr_rpttn(int *pArr, int n)
 {
 	int i, j, k;
@@ -35,25 +38,30 @@ void arr_rpttn(int *pArr, int n)
 						  
 int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave_count)
 {
-	cJSON *item = NULL;
 	unsigned int msg_count = 0;
 	unsigned int s_count = 0;
-    char buf[20] = {0};
-	char modbusinfo_buf[1024];
 	char filename[20] = {0};
-	int read_ret = oc_read_file(MODBUS_INFO_FILE, buf);
-	cJSON *root = cJSON_ParseWithLength(buf, read_ret);
-	if(root != NULL) {
-        msg_count = cJSON_GetNumberValue(cJSON_GetObjectItem(root, "msgCount"));
+    memset(read_buf,0,512);
+	int read_ret = oc_read_file(MODBUS_INFO_FILE, read_buf);
+    if(read_ret <= 0){
+        return;
+    }
+	cJSON *msgroot = cJSON_ParseWithLength(read_buf, read_ret);
+	if(msgroot != NULL) {
+        msg_count = cJSON_GetNumberValue(cJSON_GetObjectItem(msgroot, "msgCount"));
     }
 
 	int i = 0;
-	for(i = 0; i< msg_count; i++){
-		memset(modbusinfo_buf, 0, sizeof(modbusinfo_buf));
+    cJSON *item = NULL;
+	for(i = 0; i< msg_count; i++){    
+        memset(read_buf, 0, 512);
 		memset(filename, 0, sizeof(filename));
 		sprintf(filename, "modbusMsg%d", i);
-		read_ret = oc_read_file(filename, modbusinfo_buf);
-		item = cJSON_ParseWithLength(modbusinfo_buf, read_ret);
+		read_ret = oc_read_file(filename, read_buf);
+        if(read_ret <= 0) {
+            return;
+        }
+		item = cJSON_ParseWithLength(read_buf, read_ret);
 		if(item != NULL){
 			slave_msg_t *slave_item = (slave_msg_t *)slaves;
 			slave_item->s_address = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "slave_address"));
@@ -73,7 +81,7 @@ int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave
 	}
 	
 	free(item);
-	free(root);
+	free(msgroot);
 	arr_rpttn(slave_ids, s_count);
 	for(i=0;i<s_count; i++)
 	{
@@ -86,13 +94,13 @@ int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave
 
 int get_device_mode()
 {
-    char config_buf[20] = {0};
+    memset(read_buf,0,512);
     int device_mode = 0;
-    int read_ret = oc_read_file(DTU_CONFIG_FILE, config_buf);
+    int read_ret = oc_read_file(DTU_CONFIG_FILE, read_buf);
     if(read_ret < 0) {
         return -1;
     }
-    cJSON *root = cJSON_ParseWithLength(config_buf, read_ret);
+    cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
         device_mode = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "deviceMode"));    
     }
@@ -102,13 +110,13 @@ int get_device_mode()
 
 void get_mqtt_param(mqttconfig_t mqttConfig)
 {
-    char config_buf[1024] = {0};
-    int read_ret = oc_read_file(MQTT_CONFIG_FILE, config_buf);
+    memset(read_buf,0,512);
+    int read_ret = oc_read_file(MQTT_CONFIG_FILE, read_buf);
     if(read_ret < 0){
 		return;
 	}
 
-    cJSON *root = cJSON_ParseWithLength(config_buf, read_ret);
+    cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
         char *address = cJSON_GetStringValue(cJSON_GetObjectItem(root, "address"));
         memcpy(mqttConfig.address, address, strlen(address));
@@ -130,15 +138,14 @@ void get_mqtt_param(mqttconfig_t mqttConfig)
 
 void get_serial_param(serialconfig_t serialConfig)
 {
-    char config_buf[1024] = {0};
-    int read_ret = oc_read_file(SERIAL_CONFIG_FILE, config_buf);
+    memset(read_buf,0,512);
+    int read_ret = oc_read_file(SERIAL_CONFIG_FILE, read_buf);
     if(read_ret < 0){
 		return;
 	}
 
-    cJSON *root = cJSON_ParseWithLength(config_buf, read_ret);
+    cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
-
         serialConfig.baudrate = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_baud"));
         serialConfig.databits = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_data"));
         serialConfig.stopbits = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_stop"));
@@ -149,25 +156,25 @@ void get_serial_param(serialconfig_t serialConfig)
 
 void get_socket_param(socketconfig_t socketConfig)
 {
-    char config_buf[1024] = {0};
+    memset(read_buf,0,512);
     cJSON *root = NULL;
-    int read_ret = oc_read_file("sockerconfig.json1", config_buf);
+    int read_ret = oc_read_file("sockerconfig.json1", read_buf);
     if(read_ret < 0){
 		return;
 	}
-    root = cJSON_ParseWithLength(config_buf, read_ret);
+    root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
         socketConfig.tcpport = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "ip_port"));
         char *ipaddress = cJSON_GetStringValue(cJSON_GetObjectItem(root, "ip_address"));
         memcpy(socketConfig.tcpaddress, ipaddress, strlen(ipaddress));
     }
 
-    memset(config_buf, 0 ,sizeof(config_buf));
-    read_ret = oc_read_file("sockerconfig.json2", config_buf);
+    memset(read_buf, 0 ,512);
+    read_ret = oc_read_file("sockerconfig.json2", read_buf);
     if(read_ret < 0){
 		return;
 	}
-    root = cJSON_ParseWithLength(config_buf, read_ret);
+    root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
         socketConfig.udpport = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "ip_port"));
         char *ipaddress = cJSON_GetStringValue(cJSON_GetObjectItem(root, "ip_address"));
@@ -178,13 +185,13 @@ void get_socket_param(socketconfig_t socketConfig)
 
 void get_ali_param(aliconfig_t aliConfig)
 {
-    char config_buf[1024] = {0};
-    int read_ret = oc_read_file(ALI_CONFIG_FILE, config_buf);
+    memset(read_buf, 0 ,512);
+    int read_ret = oc_read_file(ALI_CONFIG_FILE, read_buf);
     if(read_ret < 0){
 		return;
 	}
 
-    cJSON *root = cJSON_ParseWithLength(config_buf, read_ret);
+    cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
         char *product_key = cJSON_GetStringValue(cJSON_GetObjectItem(root, "product_key"));
         memcpy(aliConfig.product_key, product_key, strlen(product_key));
@@ -201,14 +208,14 @@ void get_ali_param(aliconfig_t aliConfig)
 
 int get_passthrough_param()
 {
-    char config_buf[20] = {0};
+    memset(read_buf, 0 ,512);
     int protocol = 0;
-    int read_ret = oc_read_file(PASS_CONFIG_FILE, config_buf);
-    if(read_ret < 0){
+    int read_ret = oc_read_file(PASS_CONFIG_FILE, read_buf);
+    if(read_ret <= 0){
 		return -1;
 	}
 
-    cJSON *root = cJSON_ParseWithLength(config_buf, read_ret);
+    cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
         protocol = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "passProtocol"));    
     }
@@ -220,14 +227,18 @@ int get_passthrough_param()
 void device_config_init()
 {
     // 判断是否是第一次启动，第一次启动创建文件，进入配置模式
-    char config_buf[1024] = {0};
-    int ret = oc_read_file(DTU_CONFIG_FILE, config_buf);
+    if(read_flag == 0) {
+        read_buf = (char *)malloc(512);
+        read_flag = 1;
+    }
+    memset(read_buf,0,512);
+    int ret = oc_read_file(DTU_CONFIG_FILE, read_buf);
 	if(ret <= 0){
 		device_mode_write(CONFIG_MODE);
-	
+
         deviceinfo_t deviceinfo;
         device_info_get(&deviceinfo);
-
+        
         // mqtt init
         cJSON *mqttroot = cJSON_CreateObject();
         cJSON_AddItemToObject(mqttroot, "clientid", cJSON_CreateString(deviceinfo.imei));
@@ -243,5 +254,7 @@ void device_config_init()
             OC_UART_LOG_Printf("mqtt init success.\n");
         }
         free(mqttroot);
+
+        // serial init
     }
 }

@@ -34,7 +34,7 @@ int oc_write_file(char *filename, char *buf)
 int oc_read_file(char *filename, char *buf)
 {
     size_t bytes;
-    char buf_temp[1024] = {0};
+    char buf_temp[512] = {0};
     unsigned int fd = oc_fs_fopen(filename, "rb");
     if (fd < 0)
     {
@@ -49,8 +49,8 @@ int oc_read_file(char *filename, char *buf)
     }
     else
     {
-        OC_UART_LOG_Printf("%s: read success! buf - %s, bytes - %d\r\n", __func__, buf, bytes);
         memcpy(buf, buf_temp, bytes);
+        OC_UART_LOG_Printf("%s: read success! buf - %s, bytes - %d\r\n", __func__, buf, bytes);
     }
     oc_fs_fclose(fd);
     return bytes;

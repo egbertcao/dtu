@@ -80,17 +80,20 @@ static void modbus_get_response(uint16_t s_address, uint16_t r_address, uint16_t
 {
 	char message[20] = {0};
 	unsigned int i = 0;
+	unsigned int j = 0;
 	for(i = 0; i < msg_count; i++){
 		if(s_address == msg_buf[i].s_address) {
 			if(r_address == msg_buf[i].r_address) {
 				OC_UART_LOG_Printf("modbus_get_response(%d) : (0x%x)/(0x%x) %s = ", size, s_address, r_address, msg_buf[i].function);
+				OC_UART_LOG_Printf("%s 0x%x 0x%x :", msg_buf[i].function, s_address, r_address);
+				for ( j = 0; j < size; j++) {
+					OC_UART_LOG_Printf("%x ", *(buf_address+j));
+				}
+				OC_UART_LOG_Printf("\n");
 				break;
 			}
 		}
 	}
-	sprintf(message, "{%s:%d}",msg_buf[i].function,*(buf_address));
-	send_to_server(msg_buf[i].protocol, message);
-	OC_UART_LOG_Printf("%s\n", message);
 }
 
 void dtu_worker_thread(void * argv)
@@ -100,7 +103,7 @@ void dtu_worker_thread(void * argv)
 		unsigned int i = 0;
 		for(i = 0; i < msg_count; i++){
 			ModBus_getRegister(ModBus_Slave_paramater[msg_buf[i].s_address], msg_buf[i].r_address, msg_buf[i].count, modbus_get_response);
-			OSATaskSleep(2000);
+			OSATaskSleep(1000);
 		}
 	}
 }
@@ -150,7 +153,7 @@ void modbus_work()
 		setting.address = slave_ids[i];
 		setting.frameType = RTU;
 		setting.baudRate = 115200;
-		setting.register_access_limit = 1;
+		setting.register_access_limit = 8; // 最多读取8个字节
 		setting.sendHandler = sendHandler;
 		ModBus_setup(ModBus_Slave_paramater[slave_ids[i]], setting);
 	}

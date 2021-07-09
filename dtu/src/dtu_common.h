@@ -92,7 +92,7 @@ enum SerialFunctionCode {
 #define MAX_MSG 20
 
 #define DTU_CONFIG_FILE "dtuConfig.json"
-#define MODBUS_INFO_FILE "modbusinfo"
+#define MODBUS_INFO_FILE "modbusinfo.json"
 #define MQTT_CONFIG_FILE "mqttConfig.json"
 #define PASS_CONFIG_FILE "passconfig.json"
 #define SERIAL_CONFIG_FILE "serialconfig.json"
