@@ -4,7 +4,9 @@
 #include "osa.h"
 #include "oc_uart.h"
 #include "dtu_common.h"
+#include <stdlib.h>
 
+static mqttconfig_t currentmqtt;
 static OSTaskRef demoWorkerRef;
 static BOOL bRun = FALSE;
 
@@ -12,6 +14,9 @@ static void mqtt_recv_cb(  unsigned short packet_id, char *topic,  unsigned int 
 {
 	payload[payload_len] = '\0';
 	OC_UART_LOG_Printf("%s packet_id:%d,topic:%s,payload_len:%d,payload:%s\n", __func__,packet_id,topic,payload_len,payload);
+	if(0 == memcmp(topic, currentmqtt.subscribe, strlen(topic))){
+		received_from_server(payload, payload_len, TRANS_MQTT, packet_id);
+	}
 }
 
 static void mqtt_event_cb(  oc_mqtt_event_type_t event_type)
@@ -43,7 +48,6 @@ void mqtt_worker_thread(void * argv)
 		OSATaskSleep(100);
 		
 	}
-	mqttconfig_t currentmqtt;
 	if(get_mqtt_param(currentmqtt) < 0){
 		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
 		return;
@@ -65,9 +69,7 @@ void mqtt_worker_thread(void * argv)
 		OSATaskSleep(100);
 	}
 	OC_UART_LOG_Printf("%s:connect Success!\n", __func__);
-	OC_Mqtt_Subscribe("test",0);
-	OC_Mqtt_Subscribe("modbus_set",0);
-	OC_Mqtt_Subscribe("modbus_get",0);
+	OC_Mqtt_Subscribe(currentmqtt.subscribe, 0);
 
 	// 发送设备基本信息
 	deviceinfo_t deviceinfo;
@@ -78,7 +80,7 @@ void mqtt_worker_thread(void * argv)
     cJSON_AddItemToObject(attributes, "imsi", cJSON_CreateString(deviceinfo.imsi));
     cJSON_AddItemToObject(attributes, "iccid", cJSON_CreateString(deviceinfo.iccid));
 	cJSON_AddItemToObject(attributes, "cgmr", cJSON_CreateString(deviceinfo.cgmr));
-	OC_Mqtt_Publish("v1/devices/me/attributes", 0, 0, cJSON_PrintUnformatted(attributes));
+	OC_Mqtt_Publish(currentmqtt.publish, 0, 0, cJSON_PrintUnformatted(attributes));
 	free(attributes);
 
 	while(bRun)
@@ -91,7 +93,7 @@ void mqtt_worker_thread(void * argv)
 		cJSON_AddItemToObject(telemetry, "longitude", cJSON_CreateString(deviceinfo.longitude));
 		cJSON_AddItemToObject(telemetry, "csq", cJSON_CreateString(deviceinfo.csq));
 		cJSON_AddItemToObject(telemetry, "creg", cJSON_CreateString(deviceinfo.creg));
-		OC_Mqtt_Publish("v1/devices/me/telemetry", 0, 0, cJSON_PrintUnformatted(telemetry));
+		OC_Mqtt_Publish(currentmqtt.publish, 0, 0, cJSON_PrintUnformatted(telemetry));
 		OSATaskSleep(10000);
 	}
 	free(telemetry);

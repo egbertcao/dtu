@@ -21,6 +21,30 @@ static OSTaskRef dtuWorkerRef;
 static OSTaskRef MasterWorkerRef;
 ModBus_parameter* ModBus_Slave_paramater[MAX_SLAVE];
 
+void received_from_server(char *buf, int len, int procotol, unsigned short pack_id)
+{
+	char requestid[100] = {0};
+	switch (procotol)
+	{
+	case TRANS_MQTT:
+		//ModBus_setRegister(buf);
+		sprintf(requestid, "v1/devices/me/rpc/response/%d", pack_id);
+		OC_Mqtt_Publish(requestid, 1, 0, buf);
+		break;
+
+	case TRANS_TCP:
+		// tcp
+		break;
+
+	case TRANS_SERIAL:
+		OC_UART_Send(OC_UART_PORT_3, buf, len+1);
+		break;
+	
+	default:
+		break;
+	}
+}
+
 void dtu_readfromuart(char *buf_ptr, size_t size)
 {	
 	char buf[1024] = {0};

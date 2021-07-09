@@ -18,7 +18,7 @@ void send_to_server(int procotol, char *message)
 	switch (procotol)
 	{
 	case TRANS_MQTT:
-		OC_Mqtt_Publish("v1/devices/me/telemetry", 1, 0, buf);
+		OC_Mqtt_Publish("v1/gateway/telemetry", 1, 0, buf);
 		break;
 
 	case TRANS_TCP:

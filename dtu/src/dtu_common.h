@@ -29,10 +29,12 @@ typedef struct dtuconfig {
 } dtu_config_t;
 
 typedef struct mqttconfig {
-	char clientid[20];
-	char username[20];
-	char password[20];
-	char address[20];
+	char clientid[100];
+	char username[100];
+	char password[100];
+	char address[100];
+	char publish[100];
+	char subscribe[100];
 	int port;
 	int version;
 } mqttconfig_t;
@@ -124,5 +126,6 @@ extern void tool_mqtt_config_write(cJSON *msg);
 extern void tool_pass_config_write(cJSON *msg);
 extern void tool_serial_config_write(cJSON *msg);
 extern void tool_tcp_config_write(cJSON *msg);
+extern void received_from_server(char *buf, int len, int protocol, unsigned short pack_id);
 
 #endif

@@ -130,6 +130,12 @@ int get_mqtt_param(mqttconfig_t mqttConfig)
         char *password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
         memcpy(mqttConfig.password, password, strlen(password));
 
+        char *publish = cJSON_GetStringValue(cJSON_GetObjectItem(root, "publish"));
+        memcpy(mqttConfig.publish, publish, strlen(publish));
+        
+        char *subscribe = cJSON_GetStringValue(cJSON_GetObjectItem(root, "subscribe"));
+        memcpy(mqttConfig.subscribe, subscribe, strlen(subscribe));
+
         mqttConfig.port = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "port"));
         mqttConfig.version = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "version"));      
     }
@@ -235,6 +241,8 @@ void mqtt_param_init()
     cJSON_AddItemToObject(mqttroot, "address", cJSON_CreateString("182.61.41.198"));
     cJSON_AddItemToObject(mqttroot, "port", cJSON_CreateNumber(1883));
     cJSON_AddItemToObject(mqttroot, "version", cJSON_CreateNumber(4));
+    cJSON_AddItemToObject(mqttroot, "publish", cJSON_CreateString("v1/gateway/telemetry"));
+    cJSON_AddItemToObject(mqttroot, "subscribe", cJSON_CreateString("v1/devices/me/request/requests/+"));
     tool_mqtt_config_write(mqttroot);
     free(mqttroot);
 }
