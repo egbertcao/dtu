@@ -48,15 +48,23 @@ void mqtt_worker_thread(void * argv)
 		OSATaskSleep(100);
 		
 	}
-	if(get_mqtt_param(currentmqtt) < 0){
-		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
+	if(get_mqtt_param(&currentmqtt) < 0){
+		OC_UART_LOG_Printf("[%s] Get mqtt param failed.\n", __func__);
 		return;
 	}
-	OC_UART_LOG_Printf("%s:Open  network Success!\n", __func__);
+	OC_UART_LOG_Printf("[%s]:Open  network Success!\n", __func__);
 	OC_Mqtt_URCRegister(mqtt_recv_cb,mqtt_event_cb);
-	OC_Mqtt_Config(currentmqtt.clientid,currentmqtt.username,currentmqtt.password);
-	OC_Mqtt_Ipstart(currentmqtt.address, currentmqtt.port, currentmqtt.version);
-	OC_Mqtt_Connect(1, 60);
+	OC_UART_LOG_Printf("[%s]: clientid = %s\n", __func__, currentmqtt.clientid);
+	OC_UART_LOG_Printf("[%s]: username = %s\n", __func__, currentmqtt.username);
+	OC_UART_LOG_Printf("[%s]: password = %s\n", __func__, currentmqtt.password);
+	OC_UART_LOG_Printf("[%s]: address = %s\n", __func__, currentmqtt.address);
+	OC_UART_LOG_Printf("[%s]: port = %d\n", __func__, currentmqtt.port);
+	OC_UART_LOG_Printf("[%s]: version = %d\n", __func__, currentmqtt.version);
+
+	OC_Mqtt_Config("test123","868070040313326","");
+	//OC_Mqtt_Ipstart(currentmqtt.address, currentmqtt.port, currentmqtt.version);
+	OC_Mqtt_Ipstart("182.61.41.198", 1883, 4);
+	OC_Mqtt_Connect(1, 240);
 	OSATaskSleep(100);
 	while(bRun)
 	{
@@ -69,34 +77,15 @@ void mqtt_worker_thread(void * argv)
 		OSATaskSleep(100);
 	}
 	OC_UART_LOG_Printf("%s:connect Success!\n", __func__);
-	OC_Mqtt_Subscribe(currentmqtt.subscribe, 0);
-
-	// 发送设备基本信息
-	deviceinfo_t deviceinfo;
-    device_info_get(&deviceinfo);
-	cJSON *telemetry = NULL;
-	cJSON *attributes = cJSON_CreateObject();
-	cJSON_AddItemToObject(attributes, "imei", cJSON_CreateString(deviceinfo.imei));
-    cJSON_AddItemToObject(attributes, "imsi", cJSON_CreateString(deviceinfo.imsi));
-    cJSON_AddItemToObject(attributes, "iccid", cJSON_CreateString(deviceinfo.iccid));
-	cJSON_AddItemToObject(attributes, "cgmr", cJSON_CreateString(deviceinfo.cgmr));
-	OC_Mqtt_Publish(currentmqtt.publish, 0, 0, cJSON_PrintUnformatted(attributes));
-	free(attributes);
+	//OC_Mqtt_Subscribe(currentmqtt.subscribe, 0);
 
 	while(bRun)
 	{
 		// 循环发送
-		deviceinfo_t deviceinfo;
-		device_info_get(&deviceinfo);
-		cJSON *telemetry = cJSON_CreateObject();
-		cJSON_AddItemToObject(telemetry, "latitude", cJSON_CreateString(deviceinfo.latitude));
-		cJSON_AddItemToObject(telemetry, "longitude", cJSON_CreateString(deviceinfo.longitude));
-		cJSON_AddItemToObject(telemetry, "csq", cJSON_CreateString(deviceinfo.csq));
-		cJSON_AddItemToObject(telemetry, "creg", cJSON_CreateString(deviceinfo.creg));
-		OC_Mqtt_Publish(currentmqtt.publish, 0, 0, cJSON_PrintUnformatted(telemetry));
-		OSATaskSleep(10000);
+		int ret = OC_Mqtt_Publish("v1/devices/me/telemetry", 0, 0, "{\"device\":123}");
+		OC_UART_LOG_Printf("[%s] send result = %d.\n", __func__, ret);
+		OSATaskSleep(1000);
 	}
-	free(telemetry);
 }
 
 void customer_app_mqtt_demo(void)

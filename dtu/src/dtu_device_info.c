@@ -140,5 +140,5 @@ void device_info_get(deviceinfo_t *deviceinfo)
     device_cgmr_get(deviceinfo->cgmr);
     device_iccid_get(deviceinfo->iccid);
     device_creg_get(deviceinfo->creg);
-    device_csq_get(deviceinfo->csq);
+ //   device_csq_get(deviceinfo->csq);
 }

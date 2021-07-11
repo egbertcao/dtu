@@ -3,42 +3,11 @@
 #include <stdio.h>
 #include "oc_uart.h"
 #include "oc_sys.h"
-
-#define OFFSET_SECOND   946684800 
-#define SECOND_OF_DAY   86400 
-unsigned int DayOfMon[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+#include "osa.h"
 
 u32 millis() 
 {
-	TM_Time  dateTime;
-	OC_GetRealTime(&dateTime);
-	
-	int iYear, iMon, iDay, iHour, iMin, iSec, iMsec;
-	iYear = dateTime.year;
-	iMon = dateTime.month;
-	iDay = dateTime.day;
-	iHour = dateTime.hour;
-	iMin = dateTime.minute;
-	iSec = dateTime.second;
-	unsigned int i, Cyear=0;
-	u32 CountDay=0;
-
-	for(i=1970; i<iYear; i++)
-	{
-		if(((i%4==0) && (i%100!=0)) || (i%400==0)) Cyear++;
-	}
-	CountDay = Cyear * 366 + (iYear-1970-Cyear) * 365;
-	for(i=1; i<iMon; i++)
-	{
-		if((i==2) && (((iYear%4==0)&&(iYear%100!=0)) || (iYear%400==0)))
-			CountDay += 29;
-		else
-			CountDay += DayOfMon[i-1];
-	}
-	CountDay += (iDay-1);
-
-	CountDay = CountDay*SECOND_OF_DAY + (unsigned long)iHour*3600 + (unsigned long)iMin*60 + iSec;
-	return CountDay;
+	return OSAGetTicks()*OSAGetClockRate();
 }
 
 /** 配置ModBus实例 **/

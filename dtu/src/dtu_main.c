@@ -109,12 +109,25 @@ static void modbus_get_response(uint16_t s_address, uint16_t r_address, uint16_t
 		if(s_address == msg_buf[i].s_address) {
 			if(r_address == msg_buf[i].r_address) {
 				// 根据大小端模式处理数据
-				OC_UART_LOG_Printf("modbus_get_response(%d) : (0x%x)/(0x%x) %s = ", size, s_address, r_address, msg_buf[i].function);
-				OC_UART_LOG_Printf("%s 0x%x 0x%x :", msg_buf[i].function, s_address, r_address);
-				for ( j = 0; j < size; j++) {
-					OC_UART_LOG_Printf("%x ", *(buf_address+j));
+				unsigned int received_data = 0;
+				if(size == 2) {
+					unsigned short a = *(buf_address);
+					unsigned short b = *(buf_address+1);
+					received_data = (a << 16) + b;
+					OC_UART_LOG_Printf("high = 0x%x\n", a);
+					OC_UART_LOG_Printf("low = 0x%x\n", b);
 				}
-				OC_UART_LOG_Printf("\n");
+				else {
+					received_data = *(buf_address);
+				}
+				
+				// 组包并发送
+				// {"device1":[{"temp":1}]}
+				unsigned char message[100] = {0};
+				unsigned char devicename[10] = {0};
+				sprintf(devicename, "device%d", s_address);
+				sprintf(message, "{\"%s\":[\"%s\":0x%x]}",devicename, msg_buf[i].function, received_data);
+				send_to_server(TRANS_MQTT, message);
 				break;
 			}
 		}
@@ -128,7 +141,8 @@ void dtu_worker_thread(void * argv)
 		unsigned int i = 0;
 		for(i = 0; i < msg_count; i++){
 			ModBus_getRegister(ModBus_Slave_paramater[msg_buf[i].s_address], msg_buf[i].r_address, msg_buf[i].count, modbus_get_response);
-			OSATaskSleep(1000);
+			OC_UART_LOG_Printf("[%s] %d, %d, %d\n", __func__, msg_buf[i].s_address, msg_buf[i].r_address, msg_buf[i].count);
+			OSATaskSleep(500);
 		}
 	}
 }
@@ -159,20 +173,9 @@ void modbus_work()
 		return;
 	}
 	int i = 0;
-#if 0  // debuf
-	for(i = 0; i < msg_count; i++)
-	{
-		OC_UART_LOG_Printf("%d,%d,%d,%s\n", msg_buf[i].s_address, msg_buf[i].r_address, msg_buf[i].protocol, msg_buf[i].function);
-	}
-	
-	for(i=0;i<slave_count; i++)
-	{
-		OC_UART_LOG_Printf("slave%d\n", slave_ids[i]);
-	}
-#endif
 	// 读取串口配置信息，得到串口波特率
 	serialconfig_t currentserial;
-	if(get_serial_param(currentserial) < 0){
+	if(get_serial_param(&currentserial) < 0){
 		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
 		return;
 	}
@@ -186,7 +189,7 @@ void modbus_work()
 		setting.address = slave_ids[i];
 		setting.frameType = RTU;
 		setting.baudRate = currentserial.baudrate;
-		setting.register_access_limit = 8; // 最多读取8个字节
+		setting.register_access_limit = 6; // 最多读取8个字节
 		setting.sendHandler = sendHandler;
 		ModBus_setBitRate(ModBus_Slave_paramater[slave_ids[i]], currentserial.baudrate);
 		ModBus_setup(ModBus_Slave_paramater[slave_ids[i]], setting);

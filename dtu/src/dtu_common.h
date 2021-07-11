@@ -10,7 +10,8 @@ typedef struct slave {
 	unsigned int r_address;		// 寄存器地址
 	unsigned int count;			// 寄存器个数
 	char function[20];			// 功能定义
-	char data_deal[20];			// 数据处理方式
+	unsigned int multiply;      // 1 x0.001, 2 x0.01, 3 x0.1 ...
+	unsigned int endian;			// 1 大端， 0 小端
 } slave_msg_t;
 
 typedef struct deviceinfo {
@@ -40,7 +41,7 @@ typedef struct mqttconfig {
 } mqttconfig_t;
 
 typedef struct serialconfig {
-	unsigned int baudrate;
+	unsigned long baudrate;
 	unsigned int databits;
 	unsigned int stopbits;
 	unsigned int parity;
@@ -120,8 +121,8 @@ extern void device_mode_write(int deviceMode);
 extern int get_passthrough_param();
 extern int get_ali_param(aliconfig_t aliConfig);
 extern int get_socket_param(socketconfig_t socketConfig);
-extern int get_serial_param(serialconfig_t serialConfig);
-extern int get_mqtt_param(mqttconfig_t mqttConfig);
+extern int get_serial_param(serialconfig_t *serialConfig);
+extern int get_mqtt_param(mqttconfig_t *mqttConfig);
 extern void tool_mqtt_config_write(cJSON *msg);
 extern void tool_pass_config_write(cJSON *msg);
 extern void tool_serial_config_write(cJSON *msg);

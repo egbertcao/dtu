@@ -69,10 +69,10 @@ int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave
 			slave_item->r_address = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "register_address"));
 			slave_item->protocol = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "slave_protocol"));
 			slave_item->count = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "register_count"));
+            slave_item->multiply = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "data_multiply"));
+            slave_item->endian = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "endian"));
 			char *function = cJSON_GetStringValue(cJSON_GetObjectItem(item, "slave_function"));
 			memcpy(slave_item->function, function, strlen(function));
-            char *data_deal = cJSON_GetStringValue(cJSON_GetObjectItem(item, "data_deal"));
-			memcpy(slave_item->data_deal, function, strlen(data_deal));
 			
 			slave_ids[i] = slave_item->s_address;
 			s_count = s_count + 1;
@@ -108,7 +108,7 @@ int get_device_mode()
     return device_mode;
 }
 
-int get_mqtt_param(mqttconfig_t mqttConfig)
+int get_mqtt_param(mqttconfig_t *mqttConfig)
 {
     memset(read_buf,0,512);
     int read_ret = oc_read_file(MQTT_CONFIG_FILE, read_buf);
@@ -119,30 +119,30 @@ int get_mqtt_param(mqttconfig_t mqttConfig)
     cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
         char *address = cJSON_GetStringValue(cJSON_GetObjectItem(root, "address"));
-        memcpy(mqttConfig.address, address, strlen(address));
+        memcpy(mqttConfig->address, address, strlen(address));
 
         char *clientid = cJSON_GetStringValue(cJSON_GetObjectItem(root, "clientid"));
-        memcpy(mqttConfig.clientid, clientid, strlen(clientid));
+        memcpy(mqttConfig->clientid, clientid, strlen(clientid));
 
         char *username = cJSON_GetStringValue(cJSON_GetObjectItem(root, "username"));
-        memcpy(mqttConfig.username, username, strlen(username));
+        memcpy(mqttConfig->username, username, strlen(username));
 
         char *password = cJSON_GetStringValue(cJSON_GetObjectItem(root, "password"));
-        memcpy(mqttConfig.password, password, strlen(password));
+        memcpy(mqttConfig->password, password, strlen(password));
 
         char *publish = cJSON_GetStringValue(cJSON_GetObjectItem(root, "publish"));
-        memcpy(mqttConfig.publish, publish, strlen(publish));
+        memcpy(mqttConfig->publish, publish, strlen(publish));
         
         char *subscribe = cJSON_GetStringValue(cJSON_GetObjectItem(root, "subscribe"));
-        memcpy(mqttConfig.subscribe, subscribe, strlen(subscribe));
+        memcpy(mqttConfig->subscribe, subscribe, strlen(subscribe));
 
-        mqttConfig.port = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "port"));
-        mqttConfig.version = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "version"));      
+        mqttConfig->port = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "port"));
+        mqttConfig->version = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "version"));      
     }
     free(root);
 }
 
-int get_serial_param(serialconfig_t serialConfig)
+int get_serial_param(serialconfig_t *serialConfig)
 {
     memset(read_buf,0,512);
     int read_ret = oc_read_file(SERIAL_CONFIG_FILE, read_buf);
@@ -152,10 +152,10 @@ int get_serial_param(serialconfig_t serialConfig)
 
     cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
 	if(root != NULL) {
-        serialConfig.baudrate = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_baud"));
-        serialConfig.databits = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_data"));
-        serialConfig.stopbits = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_stop"));
-        serialConfig.parity = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_Parity"));      
+        serialConfig->baudrate = (unsigned long)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_baud"));
+        serialConfig->databits = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_data"));
+        serialConfig->stopbits = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_stop"));
+        serialConfig->parity = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_Parity"));      
     }
     free(root);
     return 0;
@@ -245,17 +245,14 @@ void mqtt_param_init()
     cJSON_AddItemToObject(mqttroot, "subscribe", cJSON_CreateString("v1/devices/me/request/requests/+"));
     tool_mqtt_config_write(mqttroot);
     free(mqttroot);
+    OC_UART_LOG_Printf("[%s] success!\n", __func__);
 }
 
 void serial_param_init()
 {
-    cJSON *serialroot = cJSON_CreateObject();
-    cJSON_AddItemToObject(serialroot, "serialSeting_baud", cJSON_CreateNumber(OC_UART_BAUD_115200));
-    cJSON_AddItemToObject(serialroot, "serialSeting_data", cJSON_CreateNumber(OC_UART_WORD_LEN_8));
-    cJSON_AddItemToObject(serialroot, "serialSeting_stop", cJSON_CreateNumber(OC_UART_ONE_STOP_BIT));
-    cJSON_AddItemToObject(serialroot, "serialSeting_Parity", cJSON_CreateNumber(OC_UART_NO_PARITY_BITS));
-    tool_serial_config_write(serialroot);
-    free(serialroot);
+    char *buf = "{\"serialSeting_baud\":115200,\"serialSeting_data\":3, \"serialSeting_stop\":0, \"serialSeting_Parity\":0}";
+    tool_serial_config_write(cJSON_ParseWithLength(buf, strlen(buf)));
+    OC_UART_LOG_Printf("[%s] success!\n", __func__);
 }
 
 void tcp_param_init()
@@ -272,6 +269,7 @@ void tcp_param_init()
     tool_tcp_config_write(udproot);
     free(tcproot);
     free(udproot);
+    OC_UART_LOG_Printf("[%s] success!\n", __func__);
 }
 
 void pass_param_init()
@@ -280,6 +278,7 @@ void pass_param_init()
     cJSON_AddItemToObject(passroot, "passProtocol", cJSON_CreateNumber(2));
     tool_pass_config_write(passroot);
     free(passroot);
+    OC_UART_LOG_Printf("[%s] success!\n", __func__);
 }
 
 
@@ -294,9 +293,9 @@ void device_config_init()
     memset(read_buf,0,512);
     int ret = oc_read_file(DTU_CONFIG_FILE, read_buf);
 	if(ret <= 0){
+        serial_param_init();
 		device_mode_write(CONFIG_MODE);
         mqtt_param_init();
-        serial_param_init();
         tcp_param_init();
         pass_param_init();
     }

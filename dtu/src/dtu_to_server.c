@@ -15,6 +15,7 @@ void send_to_server(int procotol, char *message)
 	char buf[1024] = {0};
 	memcpy(buf, message, len);
 	buf[len] = '\n';
+	OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
 	switch (procotol)
 	{
 	case TRANS_MQTT:

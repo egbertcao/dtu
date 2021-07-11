@@ -37,10 +37,15 @@ void uart_init()
 {
 	// 读取串口配置信息，得到串口波特率
 	serialconfig_t currentserial;
-	if(get_serial_param(currentserial) < 0){
+	if(get_serial_param(&currentserial) < 0){
 		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
 		return;
 	}
+
+	OC_UART_LOG_Printf("[%s] baudrate = %lu\n", __func__, currentserial.baudrate);
+	OC_UART_LOG_Printf("[%s] databits = %d\n", __func__, currentserial.databits);
+	OC_UART_LOG_Printf("[%s] parity = %d\n", __func__, currentserial.parity);
+	OC_UART_LOG_Printf("[%s] stopbits = %d\n", __func__, currentserial.stopbits);
 
 	OC_UARTConfiguration *uartDemoConfiguration;
 	uartDemoConfiguration =(OC_UARTConfiguration *)malloc(sizeof(OC_UARTConfiguration));
