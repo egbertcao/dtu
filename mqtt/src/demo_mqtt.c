@@ -27,8 +27,8 @@ static void mqtt_event_cb(oc_mqtt_event_type_t event_type)
 
 void mqtt_worker_thread(void * argv)
 {
+	#if 0
 	int bRet,regState,netStatus = 0;
-	Oc_Loc_Info location_info;
 	while(bRun)
 	{
 		OC_NW_GetRegState(&regState);   //查询驻网成功
@@ -51,11 +51,14 @@ void mqtt_worker_thread(void * argv)
 		
 	}
 	OC_UART_LOG_Printf("[%s]:Open  network Success!\n", __func__);
+	#endif
+	int bRet = 0;
+	Oc_Loc_Info location_info;
 	OC_Mqtt_URCRegister(mqtt_recv_cb,mqtt_event_cb);
 	if(g_dtu_config.passthrougth == TRNAS_THINGS){
 		deviceinfo_t deviceinfo;
     	device_info_get(&deviceinfo);
-		OC_Mqtt_Config(deviceinfo.imei, deviceinfo.imei,"");
+		OC_Mqtt_Config("460012467925231", "460012467925432","");
 		OC_Mqtt_Ipstart("182.61.41.198", 1883, 4);	
 	}
 	else if(g_dtu_config.passthrougth == TRANS_MQTT){
@@ -103,7 +106,7 @@ void mqtt_worker_thread(void * argv)
 		}
 		
 		// 循环发送
-		OSATaskSleep(2000);
+		OSATaskSleep(4000);
 	}
 }
 
@@ -124,5 +127,3 @@ void customer_app_mqtt_demo(void)
 		return;
 	}
 }
-
-

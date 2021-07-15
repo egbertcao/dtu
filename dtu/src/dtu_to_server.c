@@ -12,16 +12,12 @@ extern dtu_config_t g_dtu_config;
 
 void send_to_server(int procotol, char *message)
 {
-	int len = strlen(message);
-	char buf[1024] = {0};
 	int bRet = 0;
-	memcpy(buf, message, len);
-	buf[len] = '\n';
-	OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
+	OC_UART_LOG_Printf("[%s] %s\n", __func__, message);
 	switch (procotol)
 	{
 	case TRNAS_THINGS:
-		bRet = OC_Mqtt_Publish("v1/gateway/telemetry", 0, 0, "{\"device1\":[{\"test1\":456}]}");
+		bRet = OC_Mqtt_Publish("v1/gateway/telemetry", 0, 0, message);
 		OC_UART_LOG_Printf("[%s] send result = %d\n", __func__, bRet);
 		break;
 	case TRANS_MQTT:
@@ -35,10 +31,20 @@ void send_to_server(int procotol, char *message)
 		break;
 
 	case TRANS_SERIAL:
-		OC_UART_Send(OC_UART_PORT_3, buf, len+1);
 		break;
 	
 	default:
 		break;
 	}
+}
+
+void send_to_serial(int procotol, char *message)
+{
+	int len = strlen(message);
+	char buf[1024] = {0};
+	int bRet = 0;
+	memcpy(buf, message, len);	
+	OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
+	buf[len] = '\n';
+	OC_UART_Send(OC_UART_PORT_3, buf, len+1);
 }

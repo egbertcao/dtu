@@ -127,5 +127,5 @@ extern void tool_pass_config_write(cJSON *msg);
 extern void tool_serial_config_write(cJSON *msg);
 extern void tool_tcp_config_write(cJSON *msg);
 extern void received_from_server(char *buf, int len, int protocol, unsigned short pack_id);
-
+extern int dtu_netopen_worker();
 #endif

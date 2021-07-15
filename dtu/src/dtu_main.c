@@ -124,10 +124,10 @@ static void modbus_get_response(uint16_t s_address, uint16_t r_address, uint16_t
 				}
 				
 				// 组包并发送
-				unsigned char message[100] = {0};
-				unsigned char devicename[10] = {0};
-				sprintf(devicename, "device%d", s_address);
-				sprintf(message, "{\"%s\":[\"%s\":0x%x]}",devicename, msg_buf[i].function, received_data);
+				char message[100] = {0};
+				sprintf(message, "{\"device%d\":[{\"%s\":%d}]}",s_address, msg_buf[i].function, received_data);
+				//int bRet = OC_Mqtt_Publish("v1/gateway/telemetry", 0, 0, message);
+				//OC_UART_LOG_Printf("[%s] send result = %d\n", __func__, bRet);
 				send_to_server(g_dtu_config.passthrougth, message);
 				break;
 			}
@@ -254,6 +254,7 @@ void customer_app_dtu_main(void)
 
 	OC_UART_LOG_Printf("uart Start!\n");
 	customer_app_uart_demo();
+	dtu_netopen_worker();  // 阻塞等待网络连接
 
 	if(g_dtu_config.passthrougth == TRANS_MQTT || g_dtu_config.passthrougth == TRNAS_THINGS){
 		OC_UART_LOG_Printf("mqtt Start!\n");
@@ -275,6 +276,7 @@ void customer_app_dtu_main(void)
 		return;
 	}
 	
+	OSATaskSleep(1000);  // 等待5s，连接服务器
 	if(g_dtu_config.device_mode == MODBUS_MODE) {	
 		OC_UART_LOG_Printf("device is in modbus mode.\n");
 		modbus_work();
