@@ -4,7 +4,6 @@
 #include "cJSON.h"
 
 typedef struct slave {
-	unsigned int protocol;      //采用什么方式传递到服务器
 	unsigned int function_code;	// 功能码
 	unsigned int s_address;		// 从机地址
 	unsigned int r_address;		// 寄存器地址
@@ -24,10 +23,6 @@ typedef struct deviceinfo {
 	char longitude[30];
     char latitude[30];
 } deviceinfo_t;
-
-typedef struct dtuconfig {
-	unsigned int device_mode;
-} dtu_config_t;
 
 typedef struct mqttconfig {
 	char clientid[100];
@@ -77,6 +72,7 @@ enum TransProto
 	TRANS_UDP,
 	TRANS_HTTP,
 	TRNAS_ALI,
+	TRNAS_THINGS,
 };
 
 enum SerialFunctionCode {
@@ -97,6 +93,15 @@ enum SerialFunctionCode {
 	GetAliSetting
 };
 
+typedef struct dtuconfig {
+	unsigned int device_mode;
+	unsigned int passthrougth;
+	mqttconfig_t currentmqtt;
+	serialconfig_t currentserial;
+	socketconfig_t currentsocket;
+	aliconfig_t currentali;
+} dtu_config_t;
+
 
 #define MAX_SLAVE 20
 #define MAX_MSG 20
@@ -113,16 +118,10 @@ extern int oc_write_file(char *filename, char *buf);
 extern int oc_read_file(char *filename, char *buf);
 extern void send_to_server(int procotol, char *message);
 extern void device_info_get(deviceinfo_t *deviceinfo);
-extern int get_device_mode();
-extern void device_config_init();
+extern void device_config_init(dtu_config_t *currentConfig);
 extern int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave_count);
 extern void device_config(char *serialdata, size_t size);
 extern void device_mode_write(int deviceMode);
-extern int get_passthrough_param();
-extern int get_ali_param(aliconfig_t aliConfig);
-extern int get_socket_param(socketconfig_t socketConfig);
-extern int get_serial_param(serialconfig_t *serialConfig);
-extern int get_mqtt_param(mqttconfig_t *mqttConfig);
 extern void tool_mqtt_config_write(cJSON *msg);
 extern void tool_pass_config_write(cJSON *msg);
 extern void tool_serial_config_write(cJSON *msg);

@@ -9,13 +9,14 @@
 #include "dtu_common.h"
 
 slave_msg_t msg_buf[MAX_MSG];
-dtu_config_t dtu_config;
 static unsigned int byte_count = 0;
 static char *g_serial_buf = NULL;
 static Bool receivedFlag = FALSE;
 unsigned int msg_count = 0;
 unsigned int slave_ids[MAX_SLAVE];
 unsigned int slave_count = 0;
+
+dtu_config_t g_dtu_config;
 
 static OSTaskRef dtuWorkerRef;
 static OSTaskRef MasterWorkerRef;
@@ -27,9 +28,10 @@ void received_from_server(char *buf, int len, int procotol, unsigned short pack_
 	switch (procotol)
 	{
 	case TRANS_MQTT:
+		OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
 		//ModBus_setRegister(buf);
-		sprintf(requestid, "v1/devices/me/rpc/response/%d", pack_id);
-		OC_Mqtt_Publish(requestid, 1, 0, buf);
+		//sprintf(requestid, "%s%d", g_dtu_config.currentmqtt.publish, pack_id);
+		//OC_Mqtt_Publish(requestid, 1, 0, buf);
 		break;
 
 	case TRANS_TCP:
@@ -61,7 +63,7 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 		return;
 	}
 	int j = 0, i = 0;
-	switch (dtu_config.device_mode)
+	switch (g_dtu_config.device_mode)
 	{
 	case MODBUS_MODE:
 		for(j = 0; j < size; j++){
@@ -73,7 +75,7 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 		break;
 	case CONFIG_MODE:
 		for(i = 0; i < size; i++){
-			if(buf_ptr[i] == '+'){
+			if(buf_ptr[i] == '$'){
 				receivedFlag = TRUE;
 				break;
 			}
@@ -91,7 +93,7 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 	case PASSTHROUGH_MODE:
 		memset(buf, 0, sizeof(buf));
 		memcpy(buf, buf_ptr, size);
-		send_to_server(get_passthrough_param() , buf);
+		send_to_server(g_dtu_config.passthrougth, buf);
 		break;
 	
 	default:
@@ -122,12 +124,11 @@ static void modbus_get_response(uint16_t s_address, uint16_t r_address, uint16_t
 				}
 				
 				// 组包并发送
-				// {"device1":[{"temp":1}]}
 				unsigned char message[100] = {0};
 				unsigned char devicename[10] = {0};
 				sprintf(devicename, "device%d", s_address);
 				sprintf(message, "{\"%s\":[\"%s\":0x%x]}",devicename, msg_buf[i].function, received_data);
-				send_to_server(TRANS_MQTT, message);
+				send_to_server(g_dtu_config.passthrougth, message);
 				break;
 			}
 		}
@@ -173,13 +174,7 @@ void modbus_work()
 		return;
 	}
 	int i = 0;
-	// 读取串口配置信息，得到串口波特率
-	serialconfig_t currentserial;
-	if(get_serial_param(&currentserial) < 0){
-		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
-		return;
-	}
-
+	
 	for(i = 0; i < slave_count; i++) {
 		ModBus_Slave_paramater[slave_ids[i]]=(ModBus_parameter*)malloc(sizeof(ModBus_parameter));
 		if(ModBus_Slave_paramater[slave_ids[i]] == NULL){
@@ -188,10 +183,10 @@ void modbus_work()
 		ModBus_Setting_T setting;
 		setting.address = slave_ids[i];
 		setting.frameType = RTU;
-		setting.baudRate = currentserial.baudrate;
+		setting.baudRate = g_dtu_config.currentserial.baudrate;
 		setting.register_access_limit = 6; // 最多读取8个字节
 		setting.sendHandler = sendHandler;
-		ModBus_setBitRate(ModBus_Slave_paramater[slave_ids[i]], currentserial.baudrate);
+		ModBus_setBitRate(ModBus_Slave_paramater[slave_ids[i]], g_dtu_config.currentserial.baudrate);
 		ModBus_setup(ModBus_Slave_paramater[slave_ids[i]], setting);
 	}
 	
@@ -224,15 +219,63 @@ void modbus_work()
 void customer_app_dtu_main(void)
 {
 	// 设备参数初始化
+	// 获取设备配置参数
 	OC_UART_LOG_Printf("Device config init.\n");
-	device_config_init();
-	g_serial_buf = (char *)malloc(1024);
-	memset(g_serial_buf, 0, 1024);
+	memset(&g_dtu_config, 0, sizeof(dtu_config_t));
+	device_config_init(&g_dtu_config);
+
+	OC_UART_LOG_Printf("[%s] -----------serialConfig----------------\n", __func__);
+    OC_UART_LOG_Printf("[%s] baudrate = %lu\n", __func__, g_dtu_config.currentserial.baudrate);
+	OC_UART_LOG_Printf("[%s] databits = %d\n", __func__, g_dtu_config.currentserial.databits);
+	OC_UART_LOG_Printf("[%s] parity = %d\n", __func__, g_dtu_config.currentserial.parity);
+	OC_UART_LOG_Printf("[%s] stopbits = %d\n", __func__, g_dtu_config.currentserial.stopbits);
+
+	OC_UART_LOG_Printf("[%s] -----------mqttConfig----------------\n", __func__);
+	OC_UART_LOG_Printf("[%s]: clientid = %s\n", __func__, g_dtu_config.currentmqtt.clientid);
+	OC_UART_LOG_Printf("[%s]: username = %s\n", __func__, g_dtu_config.currentmqtt.username);
+	OC_UART_LOG_Printf("[%s]: password = %s\n", __func__, g_dtu_config.currentmqtt.password);
+	OC_UART_LOG_Printf("[%s]: address = %s\n", __func__, g_dtu_config.currentmqtt.address);
+	OC_UART_LOG_Printf("[%s]: port = %d\n", __func__, g_dtu_config.currentmqtt.port);
+	OC_UART_LOG_Printf("[%s]: version = %d\n", __func__, g_dtu_config.currentmqtt.version);
+	OC_UART_LOG_Printf("[%s]: publish = %s\n", __func__, g_dtu_config.currentmqtt.publish);
+	OC_UART_LOG_Printf("[%s]: subscribe = %s\n", __func__, g_dtu_config.currentmqtt.subscribe);
 	
-	// 读取设备工作模式
-	dtu_config.device_mode = get_device_mode();
-	OC_UART_LOG_Printf("dtu_config.device_mode = %d\n", dtu_config.device_mode);
-	if(dtu_config.device_mode == MODBUS_MODE) {	
+	OC_UART_LOG_Printf("[%s] -----------deviceMode----------------\n", __func__);
+	OC_UART_LOG_Printf("device_mode = %d\n", g_dtu_config.device_mode);
+
+	OC_UART_LOG_Printf("[%s] -----------passthrougth----------------\n", __func__);
+	OC_UART_LOG_Printf("passthrougth = %d\n", g_dtu_config.passthrougth);
+
+	g_serial_buf = (char *)malloc(1024);
+	if(g_serial_buf == NULL) {
+		return;
+	}
+	memset(g_serial_buf, 0, 1024);
+
+	OC_UART_LOG_Printf("uart Start!\n");
+	customer_app_uart_demo();
+
+	if(g_dtu_config.passthrougth == TRANS_MQTT || g_dtu_config.passthrougth == TRNAS_THINGS){
+		OC_UART_LOG_Printf("mqtt Start!\n");
+		customer_app_mqtt_demo();
+	}
+	else if(g_dtu_config.passthrougth == TRANS_TCP){
+		//tcp
+	}
+	else if(g_dtu_config.passthrougth == TRANS_UDP){
+		// udp
+	}
+	else if(g_dtu_config.passthrougth == TRANS_HTTP){
+		// http
+	}
+	else if(g_dtu_config.passthrougth == TRNAS_ALI){
+		// ali
+	}
+	else{
+		return;
+	}
+	
+	if(g_dtu_config.device_mode == MODBUS_MODE) {	
 		OC_UART_LOG_Printf("device is in modbus mode.\n");
 		modbus_work();
 	}

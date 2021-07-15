@@ -13,6 +13,7 @@
 OSATaskRef customerUartRxTaskRef;
 UINT8* customerUartRxTaskStack;
 extern OSAFlagRef customer_Uart_FlagRef;
+extern dtu_config_t g_dtu_config;
 
 static void demo_uart_callback(void *user_data, OC_UART_Event uart_evt)
 {
@@ -35,24 +36,12 @@ static void demo_uart_callback(void *user_data, OC_UART_Event uart_evt)
 
 void uart_init()
 {
-	// 读取串口配置信息，得到串口波特率
-	serialconfig_t currentserial;
-	if(get_serial_param(&currentserial) < 0){
-		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
-		return;
-	}
-
-	OC_UART_LOG_Printf("[%s] baudrate = %lu\n", __func__, currentserial.baudrate);
-	OC_UART_LOG_Printf("[%s] databits = %d\n", __func__, currentserial.databits);
-	OC_UART_LOG_Printf("[%s] parity = %d\n", __func__, currentserial.parity);
-	OC_UART_LOG_Printf("[%s] stopbits = %d\n", __func__, currentserial.stopbits);
-
 	OC_UARTConfiguration *uartDemoConfiguration;
 	uartDemoConfiguration =(OC_UARTConfiguration *)malloc(sizeof(OC_UARTConfiguration));
-	uartDemoConfiguration->oc_baudRate = currentserial.baudrate;
-	uartDemoConfiguration->oc_numDataBits = currentserial.databits;
-	uartDemoConfiguration->oc_parityBitType = currentserial.parity;
-	uartDemoConfiguration->oc_stopBits = currentserial.stopbits;
+	uartDemoConfiguration->oc_baudRate = g_dtu_config.currentserial.baudrate;
+	uartDemoConfiguration->oc_numDataBits = g_dtu_config.currentserial.databits;
+	uartDemoConfiguration->oc_parityBitType = g_dtu_config.currentserial.parity;
+	uartDemoConfiguration->oc_stopBits = g_dtu_config.currentserial.stopbits;
 	uartDemoConfiguration->oc_flowControl = FALSE;
 	uartDemoConfiguration->oc_auto_baud = FALSE;
 	uartDemoConfiguration->callback = demo_uart_callback;
