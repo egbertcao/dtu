@@ -1,7 +1,15 @@
 #ifndef _DUT_COMMON_H_
 #define _DUT_COMMON_H_
 #include "oc_pcac_fs.h"
+#include <stdio.h>
+#include "global_types.h"
+#include <stdlib.h>
+#include "osa.h"
+#include "modbus.h"
+#include "oc_mqtt.h"
 #include "cJSON.h"
+#include "oc_uart.h"
+#include "dtu_common.h"
 
 typedef struct slave {
 	unsigned int function_code;	// 功能码
@@ -10,7 +18,7 @@ typedef struct slave {
 	unsigned int count;			// 寄存器个数
 	char function[20];			// 功能定义
 	unsigned int multiply;      // 1 x0.001, 2 x0.01, 3 x0.1 ...
-	unsigned int endian;			// 1 大端， 0 小端
+	unsigned int endian;			// 1 大端， 2 小端
 } slave_msg_t;
 
 typedef struct deviceinfo {
@@ -116,7 +124,6 @@ typedef struct dtuconfig {
 
 extern int oc_write_file(char *filename, char *buf);
 extern int oc_read_file(char *filename, char *buf);
-extern void send_to_server(int procotol, char *message);
 extern void device_info_get(deviceinfo_t *deviceinfo);
 extern void device_config_init(dtu_config_t *currentConfig);
 extern int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave_count);
@@ -127,5 +134,7 @@ extern void tool_pass_config_write(cJSON *msg);
 extern void tool_serial_config_write(cJSON *msg);
 extern void tool_tcp_config_write(cJSON *msg);
 extern void received_from_server(char *buf, int len, int protocol, unsigned short pack_id);
+extern void send_to_server_pass(char *message);
+extern void send_to_server_modbus(uint16_t s_address, char *functionCode, int multiply,unsigned int received_data);
 extern int dtu_netopen_worker();
 #endif

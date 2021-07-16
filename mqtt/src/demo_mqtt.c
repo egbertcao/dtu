@@ -54,7 +54,6 @@ void mqtt_worker_thread(void * argv)
 	#endif
 	int bRet = 0;
 	Oc_Loc_Info location_info;
-	OC_Mqtt_URCRegister(mqtt_recv_cb,mqtt_event_cb);
 	if(g_dtu_config.passthrougth == TRNAS_THINGS){
 		deviceinfo_t deviceinfo;
     	device_info_get(&deviceinfo);
@@ -68,6 +67,7 @@ void mqtt_worker_thread(void * argv)
 	else {
 		return;
 	}
+	OC_Mqtt_URCRegister(mqtt_recv_cb,mqtt_event_cb);
 	OC_Mqtt_Connect(1, 240);
 	OSATaskSleep(100);
 	while(bRun)
@@ -103,6 +103,24 @@ void mqtt_worker_thread(void * argv)
 		else{
 			bRet = OC_Mqtt_Publish(g_dtu_config.currentmqtt.publish, 0, 0, buf);
 			OC_UART_LOG_Printf("[%s] send result = %d\n", __func__, bRet);
+		}
+		// 在此维护mqtt重连
+		if(bRet == -1){
+			if(2 != OC_Mqtt_State()){
+				OC_Mqtt_Connect(1, 240);
+			}
+
+			while(bRun)
+			{
+				bRet = OC_Mqtt_State();
+				OC_UART_LOG_Printf("%s: mqtt state = %d \n", __func__,bRet);
+				if(bRet==2)
+				{
+					OSATaskSleep(100);
+					break;
+				}
+				OSATaskSleep(100);
+			}
 		}
 		
 		// 循环发送

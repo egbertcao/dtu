@@ -9,6 +9,17 @@
 static char *read_buf = NULL;
 static unsigned read_flag = 0;
 
+static void send_to_serial(char *message)
+{
+	int len = strlen(message);
+	char buf[1024] = {0};
+	int bRet = 0;
+	memcpy(buf, message, len);	
+	OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
+	buf[len] = '\n';
+	OC_UART_Send(OC_UART_PORT_3, buf, len+1);
+}
+
 void device_mode_write(int deviceMode)
 {
     cJSON *root = cJSON_CreateObject();
@@ -33,7 +44,7 @@ void tool_getdtumode()
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetDtuMode));
     cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
     cJSON_AddItemToObject(root, "msg", item);
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -54,7 +65,7 @@ void tool_getdtudetail()
     cJSON_AddItemToObject(item, "latitude", cJSON_CreateString(deviceinfo.latitude));
     cJSON_AddItemToObject(root, "msg", item);
     OC_UART_LOG_Printf("[%s] %s\n",__func__, cJSON_PrintUnformatted(root));
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -135,7 +146,7 @@ void tool_modbus_config_read()
         cJSON_AddItemToArray(array, item);
     }
     cJSON_AddItemToObject(root, "msg", array);
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     if(NULL != item) {
         free(item);
     }
@@ -167,7 +178,7 @@ void tool_mqtt_config_read()
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetMqttConfig));
     cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
     cJSON_AddItemToObject(root, "msg", item);
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     free(root);
 }
        
@@ -196,7 +207,7 @@ void tool_pass_config_read()
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetPassProtocol));
     cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
     cJSON_AddItemToObject(root, "msg", item);
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     free(item); 
     free(root);
 }
@@ -225,7 +236,7 @@ void tool_serial_config_read()
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetSerialSetting));
     cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
     cJSON_AddItemToObject(root, "msg", item);
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -266,7 +277,7 @@ void tool_tcp_config_read(cJSON *msg)
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetTcpSetting));
     cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
     cJSON_AddItemToObject(root, "msg", item);
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }
@@ -295,7 +306,7 @@ void tool_ali_config_read()
     cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetAliSetting));
     cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
     cJSON_AddItemToObject(root, "msg", item);
-    send_to_serial(TRANS_SERIAL, cJSON_PrintUnformatted(root));
+    send_to_serial(cJSON_PrintUnformatted(root));
     free(item);
     free(root);
 }

@@ -20,32 +20,7 @@ dtu_config_t g_dtu_config;
 
 static OSTaskRef dtuWorkerRef;
 static OSTaskRef MasterWorkerRef;
-ModBus_parameter* ModBus_Slave_paramater[MAX_SLAVE];
-
-void received_from_server(char *buf, int len, int procotol, unsigned short pack_id)
-{
-	char requestid[100] = {0};
-	switch (procotol)
-	{
-	case TRANS_MQTT:
-		OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
-		//ModBus_setRegister(buf);
-		//sprintf(requestid, "%s%d", g_dtu_config.currentmqtt.publish, pack_id);
-		//OC_Mqtt_Publish(requestid, 1, 0, buf);
-		break;
-
-	case TRANS_TCP:
-		// tcp
-		break;
-
-	case TRANS_SERIAL:
-		OC_UART_Send(OC_UART_PORT_3, buf, len+1);
-		break;
-	
-	default:
-		break;
-	}
-}
+static ModBus_parameter* ModBus_Slave_paramater[MAX_SLAVE];
 
 void dtu_readfromuart(char *buf_ptr, size_t size)
 {	
@@ -93,7 +68,7 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 	case PASSTHROUGH_MODE:
 		memset(buf, 0, sizeof(buf));
 		memcpy(buf, buf_ptr, size);
-		send_to_server(g_dtu_config.passthrougth, buf);
+		send_to_server_pass(buf);
 		break;
 	
 	default:
@@ -104,7 +79,6 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 // 寄存器值缓冲区首地址, 寄存器个数
 static void modbus_get_response(uint16_t s_address, uint16_t r_address, uint16_t *buf_address, uint16_t size)
 {
-	char message[20] = {0};
 	unsigned int i = 0;
 	unsigned int j = 0;
 	for(i = 0; i < msg_count; i++){
@@ -113,22 +87,23 @@ static void modbus_get_response(uint16_t s_address, uint16_t r_address, uint16_t
 				// 根据大小端模式处理数据
 				unsigned int received_data = 0;
 				if(size == 2) {
-					unsigned short a = *(buf_address);
-					unsigned short b = *(buf_address+1);
-					received_data = (a << 16) + b;
-					OC_UART_LOG_Printf("high = 0x%x\n", a);
-					OC_UART_LOG_Printf("low = 0x%x\n", b);
+					if(msg_buf[i].endian == 1){
+						unsigned short a = *(buf_address);
+						unsigned short b = *(buf_address+1);
+						received_data = (a << 16) + b;
+					}
+					if(msg_buf[i].endian == 0){
+						unsigned short a = *(buf_address);
+						unsigned short b = *(buf_address+1);
+						received_data = (b << 16) + a;
+					}
+					OC_UART_LOG_Printf("[%s] received_data = 0x%x\n", __func__, received_data);
 				}
 				else {
 					received_data = *(buf_address);
 				}
-				
 				// 组包并发送
-				char message[100] = {0};
-				sprintf(message, "{\"device%d\":[{\"%s\":%d}]}",s_address, msg_buf[i].function, received_data);
-				//int bRet = OC_Mqtt_Publish("v1/gateway/telemetry", 0, 0, message);
-				//OC_UART_LOG_Printf("[%s] send result = %d\n", __func__, bRet);
-				send_to_server(g_dtu_config.passthrougth, message);
+				send_to_server_modbus(s_address, msg_buf[i].function, msg_buf[i].multiply, received_data);
 				break;
 			}
 		}
