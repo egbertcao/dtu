@@ -39,7 +39,8 @@ else
 PACKAGE_INC_PATHS   += ${BUILD_ROOT}\hal\oc_include 
 endif 
 
-PACKAGE_SRC_FILES = demo_tcp.c
+PACKAGE_SRC_FILES = demo_tcp.c \
+					demo_udp.c
 		
  
 # These are the tool flags specific to the GPIO package only.

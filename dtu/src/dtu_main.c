@@ -8,7 +8,7 @@
 #include "oc_uart.h"
 #include "dtu_common.h"
 
-slave_msg_t msg_buf[MAX_MSG];
+modbus_slave_msg_t msg_buf[MAX_MSG];
 static unsigned int byte_count = 0;
 static char *g_serial_buf = NULL;
 static Bool receivedFlag = FALSE;
@@ -118,7 +118,7 @@ void dtu_worker_thread(void * argv)
 		for(i = 0; i < msg_count; i++){
 			ModBus_getRegister(ModBus_Slave_paramater[msg_buf[i].s_address], msg_buf[i].r_address, msg_buf[i].count, modbus_get_response);
 			OC_UART_LOG_Printf("[%s] %d, %d, %d\n", __func__, msg_buf[i].s_address, msg_buf[i].r_address, msg_buf[i].count);
-			OSATaskSleep(500);
+			OSATaskSleep(200);
 		}
 	}
 }
@@ -142,7 +142,7 @@ static void modbus_master(void *parameter)
 
 void modbus_work()
 {
-	memset(msg_buf, 0, MAX_SLAVE*sizeof(slave_msg_t));
+	memset(msg_buf, 0, MAX_SLAVE*sizeof(modbus_slave_msg_t));
 	msg_count = get_modbus_slaves(msg_buf, slave_ids, &slave_count);
 	if (msg_count <= 0) {
 		OC_UART_LOG_Printf("get_modbus_slaves error!\n");
@@ -214,6 +214,12 @@ void customer_app_dtu_main(void)
 	OC_UART_LOG_Printf("[%s]: version = %d\n", __func__, g_dtu_config.currentmqtt.version);
 	OC_UART_LOG_Printf("[%s]: publish = %s\n", __func__, g_dtu_config.currentmqtt.publish);
 	OC_UART_LOG_Printf("[%s]: subscribe = %s\n", __func__, g_dtu_config.currentmqtt.subscribe);
+
+	OC_UART_LOG_Printf("[%s] -----------socketConfig----------------\n", __func__);
+	OC_UART_LOG_Printf("[%s]: tcpaddress = %s\n", __func__, g_dtu_config.currentsocket.tcpaddress);
+	OC_UART_LOG_Printf("[%s]: tcpport = %d\n", __func__, g_dtu_config.currentsocket.tcpport);
+	OC_UART_LOG_Printf("[%s]: udpaddress = %s\n", __func__, g_dtu_config.currentsocket.udpaddress);
+	OC_UART_LOG_Printf("[%s]: udpport = %d\n", __func__, g_dtu_config.currentsocket.udpport);
 	
 	OC_UART_LOG_Printf("[%s] -----------deviceMode----------------\n", __func__);
 	OC_UART_LOG_Printf("device_mode = %d\n", g_dtu_config.device_mode);
@@ -227,19 +233,17 @@ void customer_app_dtu_main(void)
 	}
 	memset(g_serial_buf, 0, 1024);
 
-	OC_UART_LOG_Printf("uart Start!\n");
-	customer_app_uart_demo();
-	dtu_netopen_worker();  // 阻塞等待网络连接
+	customer_app_uart_start();
+	customer_app_netopen_start();  // 等待网络连接并开启网络连接监控线程
 
 	if(g_dtu_config.passthrougth == TRANS_MQTT || g_dtu_config.passthrougth == TRNAS_THINGS){
-		OC_UART_LOG_Printf("mqtt Start!\n");
-		customer_app_mqtt_demo();
+		customer_app_mqtt_start();
 	}
 	else if(g_dtu_config.passthrougth == TRANS_TCP){
-		//tcp
+		customer_app_tcp_start();
 	}
 	else if(g_dtu_config.passthrougth == TRANS_UDP){
-		// udp
+		customer_app_udp_start();
 	}
 	else if(g_dtu_config.passthrougth == TRANS_HTTP){
 		// http

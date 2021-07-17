@@ -44,7 +44,7 @@ int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave
     memset(read_buf,0,512);
 	int read_ret = oc_read_file(MODBUS_INFO_FILE, read_buf);
     if(read_ret <= 0){
-        return;
+        return -1;
     }
 	cJSON *msgroot = cJSON_ParseWithLength(read_buf, read_ret);
 	if(msgroot != NULL) {
@@ -59,11 +59,11 @@ int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave
 		sprintf(filename, "modbusMsg%d", i);
 		read_ret = oc_read_file(filename, read_buf);
         if(read_ret <= 0) {
-            return;
+            return -1;
         }
 		item = cJSON_ParseWithLength(read_buf, read_ret);
 		if(item != NULL){
-			slave_msg_t *slave_item = (slave_msg_t *)slaves;
+			modbus_slave_msg_t *slave_item = (modbus_slave_msg_t *)slaves;
 			slave_item->s_address = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "slave_address"));
             slave_item->function_code = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "modbus_function"));
 			slave_item->r_address = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(item, "register_address"));
@@ -75,7 +75,7 @@ int get_modbus_slaves(void *slaves, unsigned int *slave_ids, unsigned int *slave
 			
 			slave_ids[i] = slave_item->s_address;
 			s_count = s_count + 1;
-			slaves = slaves + sizeof(slave_msg_t);
+			slaves = slaves + sizeof(modbus_slave_msg_t);
 		}
 	}
 	
@@ -107,7 +107,7 @@ static int get_device_mode()
     return device_mode;
 }
 
-static int get_mqtt_param(mqttconfig_t *mqttConfig)
+static void get_mqtt_param(mqttconfig_t *mqttConfig)
 {
     memset(read_buf,0,512);
     int read_ret = oc_read_file(MQTT_CONFIG_FILE, read_buf);
@@ -141,7 +141,7 @@ static int get_mqtt_param(mqttconfig_t *mqttConfig)
     free(root);
 }
 
-static int get_serial_param(serialconfig_t *serialConfig)
+static void get_serial_param(serialconfig_t *serialConfig)
 {
     memset(read_buf,0,512);
     int read_ret = oc_read_file(SERIAL_CONFIG_FILE, read_buf);
@@ -157,14 +157,13 @@ static int get_serial_param(serialconfig_t *serialConfig)
         serialConfig->parity = (unsigned short)cJSON_GetNumberValue(cJSON_GetObjectItem(root, "serialSeting_Parity"));      
     }
     free(root);
-    return 0;
 }
 
-static int get_socket_param(socketconfig_t *socketConfig)
+static void get_socket_param(socketconfig_t *socketConfig)
 {
     memset(read_buf,0,512);
     cJSON *root = NULL;
-    int read_ret = oc_read_file("sockerconfig.json1", read_buf);
+    int read_ret = oc_read_file("sockerconfig.json_1", read_buf);
     if(read_ret < 0){
 		return;
 	}
@@ -176,7 +175,7 @@ static int get_socket_param(socketconfig_t *socketConfig)
     }
 
     memset(read_buf, 0 ,512);
-    read_ret = oc_read_file("sockerconfig.json2", read_buf);
+    read_ret = oc_read_file("sockerconfig.json_2", read_buf);
     if(read_ret < 0){
 		return;
 	}
@@ -189,7 +188,7 @@ static int get_socket_param(socketconfig_t *socketConfig)
     free(root);
 }
 
-static int get_ali_param(aliconfig_t *aliConfig)
+static void get_ali_param(aliconfig_t *aliConfig)
 {
     memset(read_buf, 0 ,512);
     int read_ret = oc_read_file(ALI_CONFIG_FILE, read_buf);
@@ -252,7 +251,7 @@ static void serial_param_init()
     OC_UART_LOG_Printf("[%s] success!\n", __func__);
 }
 
-static void tcp_param_init()
+static void socket_param_init()
 {
     cJSON *tcproot = cJSON_CreateObject();
     cJSON_AddItemToObject(tcproot, "ip_address", cJSON_CreateString("182.61.41.198"));
@@ -289,22 +288,14 @@ void device_config_init(dtu_config_t *currentConfig)
         device_mode_write(CONFIG_MODE);
         serial_param_init();
         mqtt_param_init();
-        tcp_param_init();
+        socket_param_init();
         pass_param_init();
     }
 
-	if(get_serial_param(&currentConfig->currentserial) < 0){
-		OC_UART_LOG_Printf("[%s] Get Serial param failed.\n", __func__);
-	}
-	if(get_mqtt_param(&currentConfig->currentmqtt) < 0){
-		OC_UART_LOG_Printf("[%s] Get mqtt param failed.\n", __func__);
-	}
-	if(get_socket_param(&currentConfig->currentsocket) < 0){
-		OC_UART_LOG_Printf("[%s] Get socket param failed.\n", __func__);
-	}
-	if(get_ali_param(&currentConfig->currentali) < 0){
-		OC_UART_LOG_Printf("[%s] Get ali param failed.\n", __func__);
-	}
+	get_serial_param(&currentConfig->currentserial);
+	get_mqtt_param(&currentConfig->currentmqtt);
+	get_socket_param(&currentConfig->currentsocket);
+	get_ali_param(&currentConfig->currentali);
     // 读取设备工作模式
 	currentConfig->device_mode = get_device_mode();
     currentConfig->passthrougth = get_passthrough_param();

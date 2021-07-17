@@ -2,66 +2,115 @@
 #include "global_types.h"
 #include "oc_net.h"
 #include "sockets.h"
-#define SERV_IP    "182.61.41.198"
-#define SERV_PORT  6600
+#include "dtu_common.h"
+#include "oc_uart.h"
 
-static OSTaskRef demoWorkerRef;
-static BOOL bRun = FALSE;
+static int sock_fd;
+static struct sockaddr_in servaddr;
+static OSTaskRef tcpWorkerRef;
+static OSTaskRef tcpMonitorRef;
+static BOOL bWorkerRun = FALSE;
+static BOOL bMonitorRun = FALSE;
+extern dtu_config_t g_dtu_config;
 
-void customer_app_tcp_demo(void)
+void dtu_tcp_send(char *message)
 {
-	struct sockaddr_in servaddr;
-	int sock_fd;
+	int bytes = send(sock_fd, message, strlen(message), 0);
+	printf("bytes = %d", bytes);
+}
+
+void tcp_worker_thread(void)
+{
 	int bytes =0;
 	int res=-1;
-	char sendbuf[64]={0};
 	char recvbuf[64]={0};
 	sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 	memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(SERV_PORT);  // server port
-    servaddr.sin_addr.s_addr = inet_addr(SERV_IP);  // server ip
-	 if(connect(sock_fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-    {
-        CPUartLogPrintf("connect faild!!");
-        return;
-    }
-    CPUartLogPrintf("connect: Success\n");
-	strcpy(sendbuf,"tcp test!");
-
-	while (bRun)
+    servaddr.sin_port = htons(g_dtu_config.currentsocket.tcpport);  // server port
+    servaddr.sin_addr.s_addr = inet_addr(g_dtu_config.currentsocket.tcpaddress);  // server ip
+	OC_UART_LOG_Printf("[%s] Trying to TCP connectting!\n", __func__);
+	while (TRUE)
 	{
-		bytes = send(sock_fd, sendbuf, strlen(sendbuf), 0);
+		int netstatus = OC_GetNetStatus();
+		if(netstatus == 1) { 
+			int ret = connect(sock_fd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+			OC_UART_LOG_Printf("[%s] Connection = %d!\n", __func__, ret);
+			if(ret == 0){
+				break;
+			}	
+		}
+		OSATaskSleep(200); 
+	}
+	
+    OC_UART_LOG_Printf("[%s] connect Success\n", __func__);
+	while (bWorkerRun)
+	{
 		bytes = recv(sock_fd, recvbuf, sizeof(recvbuf), 0);
-		CPUartLogPrintf("%s: recvbuf:%s,bytes:%d", __func__,recvbuf,bytes);
-		OSATaskSleep(2000);
+		if(bytes <= 0) {
+			OC_UART_LOG_Printf("[%s]: socket disconnect\n", __func__);
+			bWorkerRun = FALSE;
+			break;
+		}
+		
+		OC_UART_LOG_Printf("%s: recvbuf:%s,bytes:%d", __func__,recvbuf,bytes);
+		received_from_server(recvbuf, bytes, TRANS_TCP);
 	}
 }
 
-void customer_app_udp_demo(void)
+void tcp_monitor_thread(void)
 {
-	struct sockaddr_in servaddr;
-	int sock_fd;
-	int bytes =0;
-	int res=-1;
-	char sendbuf[64]={0};
-	char recvbuf[64]={0};
-	sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
-	memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(SERV_PORT);  // server port
-    servaddr.sin_addr.s_addr = inet_addr(SERV_IP);  // server ip
-	 if(connect(sock_fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-    {
-        CPUartLogPrintf("connect faild!!");
-        return;
-    }
-    CPUartLogPrintf("connect: Success\n");
-	strcpy(sendbuf,"udp test!");
-	bytes = sendto(sock_fd,sendbuf, strlen(sendbuf), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
-	struct sockaddr_in server;
-	socklen_t addrlen;
-	bytes = recvfrom(sock_fd, recvbuf, sizeof(recvbuf), 0, &server, &addrlen);
-	CPUartLogPrintf("%s: recvbuf:%s\n", __func__,recvbuf);
+	OC_UART_LOG_Printf("[%s] tcp Monitor Start!\n", __func__);
+	void *TcpWorkTaskStack;
+	TcpWorkTaskStack=malloc(4096);
+	if(TcpWorkTaskStack == NULL)
+	{
+		return;
+	}
+	bWorkerRun = TRUE;
+	if(OSATaskCreate(&tcpWorkerRef,
+	                 TcpWorkTaskStack,
+	                 4096,80,(char*)"tcpWorkerTask",
+	                 tcp_worker_thread, NULL) != 0)
+	{
+		return;
+	}
+	
+	while (bMonitorRun)
+	{
+		if(bWorkerRun == FALSE){
+			int netstatus = OC_GetNetStatus();
+			if(netstatus == 1) { // 网络恢复后再重新连接
+				OSATaskDelete(tcpWorkerRef); 
+				bWorkerRun = TRUE;
+				if(OSATaskCreate(&tcpWorkerRef,
+								TcpWorkTaskStack,
+								4096,80,(char*)"tcpWorkerTask",
+								tcp_worker_thread, NULL) != 0)
+				{
+					return;
+				}
+			}
+		}
+		OSATaskSleep(2000); //每10s查询一次TCP状态
+	}
 }
 
+void customer_app_tcp_start(void)
+{
+	OC_UART_LOG_Printf("[%s] tcp Start!\n", __func__);
+	void *TcpMonitorTaskStack;
+	TcpMonitorTaskStack=malloc(4096);
+	if(TcpMonitorTaskStack == NULL)
+	{
+		return;
+	}
+	bMonitorRun = TRUE;
+	if(OSATaskCreate(&tcpMonitorRef,
+	                 TcpMonitorTaskStack,
+	                 4096,80,(char*)"tcpMonitorTask",
+	                 tcp_monitor_thread, NULL) != 0)
+	{
+		return;
+	}
+}

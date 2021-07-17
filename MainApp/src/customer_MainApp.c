@@ -11,7 +11,7 @@ static UINT8*	customer_app_TaskStack = NULL;
 static OSASemaRef		customerAppSemaRef = 0;
 OSAFlagRef	customer_app_FlagRef;
 
-extern void customer_app_uart_demo(void);
+extern void customer_app_uart_start(void);
 extern void customer_alimqtt_autoAck_demo(void);
 OSA_STATUS CustomerAppLockNoBlock(void)
 {

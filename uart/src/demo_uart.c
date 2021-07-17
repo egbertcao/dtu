@@ -109,8 +109,9 @@ void customerUartRxTask(VOID *argv)
 	}
 }
 
-void customer_app_uart_demo(void)
+void customer_app_uart_start(void)
 {
+	OC_UART_LOG_Printf("[%s] uart Start!\n", __func__);
 	char uartTestMsg [1024];
 	UINT16 datalen;
 	UINT16 lenToRead = sizeof(uartTestMsg) -1;
