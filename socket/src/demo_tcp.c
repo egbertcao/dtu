@@ -21,6 +21,7 @@ void dtu_tcp_send(char *message)
 
 void tcp_worker_thread(void)
 {
+	OC_UART_LOG_Printf("[%s] tcp Worker Start!\n", __func__);
 	int bytes =0;
 	int res=-1;
 	char recvbuf[64]={0};
@@ -29,7 +30,6 @@ void tcp_worker_thread(void)
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(g_dtu_config.currentsocket.tcpport);  // server port
     servaddr.sin_addr.s_addr = inet_addr(g_dtu_config.currentsocket.tcpaddress);  // server ip
-	OC_UART_LOG_Printf("[%s] Trying to TCP connectting!\n", __func__);
 	while (TRUE)
 	{
 		int netstatus = OC_GetNetStatus();
@@ -38,7 +38,7 @@ void tcp_worker_thread(void)
 			OC_UART_LOG_Printf("[%s] Connection = %d!\n", __func__, ret);
 			if(ret == 0){
 				break;
-			}	
+			}
 		}
 		OSATaskSleep(200); 
 	}
@@ -53,7 +53,7 @@ void tcp_worker_thread(void)
 			break;
 		}
 		
-		OC_UART_LOG_Printf("%s: recvbuf:%s,bytes:%d", __func__,recvbuf,bytes);
+		OC_UART_LOG_Printf("[%s] recvbuf:%s,bytes:%d", __func__,recvbuf,bytes);
 		received_from_server(recvbuf, bytes, TRANS_TCP);
 	}
 }
@@ -98,7 +98,6 @@ void tcp_monitor_thread(void)
 
 void customer_app_tcp_start(void)
 {
-	OC_UART_LOG_Printf("[%s] tcp Start!\n", __func__);
 	void *TcpMonitorTaskStack;
 	TcpMonitorTaskStack=malloc(4096);
 	if(TcpMonitorTaskStack == NULL)

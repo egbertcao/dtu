@@ -1,4 +1,5 @@
 #include "oc_hal_feature_config.h"
+#define OC_WATCHDOG_DEMO_MODULE_ENABLED 
 #ifdef OC_WATCHDOG_DEMO_MODULE_ENABLED
 #include <stdio.h>
 #include "global_types.h"
