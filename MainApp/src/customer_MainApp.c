@@ -35,7 +35,7 @@ void Customer_App_Main(void *arg)
 	status = OSASemaphoreCreate(&customerAppSemaRef, 1, OSA_FIFO);
 	ASSERT(status == OS_SUCCESS);
 
-	customer_app_watchdog_demo();  // 开启watchdog
+	//customer_app_watchdog_demo();  // 开启watchdog
 
 	#if 1
 	OC_UART_LOG_Printf("dtu main start!\n");

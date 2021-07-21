@@ -77,6 +77,23 @@ void dtu_readfromuart(char *buf_ptr, size_t size)
 }
 
 // 寄存器值缓冲区首地址, 寄存器个数
+static void modbus_set_response(uint16_t address, uint16_t count)
+{
+	OC_UART_LOG_Printf("[%s] set success.\n", __func__);
+}
+
+void modbus_set_data(uint16_t s_address, uint16_t r_address, uint16_t data, uint16_t count)
+{
+	unsigned int i = 0;
+	for(i=0; i<slave_count; i++){
+		if(ModBus_Slave_paramater[slave_ids[i]]->m_address == s_address){
+			ModBus_setRegisters(ModBus_Slave_paramater[slave_ids[i]], r_address, data, count, modbus_set_response);
+			break;
+		}
+	}
+}
+
+// 寄存器值缓冲区首地址, 寄存器个数
 static void modbus_get_response(uint16_t s_address, uint16_t r_address, uint16_t *buf_address, uint16_t size)
 {
 	unsigned int i = 0;

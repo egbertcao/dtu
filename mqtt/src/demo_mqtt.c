@@ -35,11 +35,9 @@ static int dtu_mqtt_connect()
 	int bRet = 0;
 	OC_Mqtt_URCRegister(mqtt_recv_cb,mqtt_event_cb);
 	if(g_dtu_config.passthrougth == TRNAS_THINGS){
-		deviceinfo_t deviceinfo;
-    	device_info_get(&deviceinfo);
-		OC_UART_LOG_Printf("[%s]: imei = %s, len = %d\n", __func__,	deviceinfo.imei, strlen(deviceinfo.imei));
+		OC_UART_LOG_Printf("[%s]: imei = %s, len = %d\n", __func__,	g_dtu_config.deviceinfo.imei, strlen(g_dtu_config.deviceinfo.imei));
 		char imeibuf[30] = {0};
-		sprintf(imeibuf, "%s", deviceinfo.imei);
+		sprintf(imeibuf, "%s", g_dtu_config.deviceinfo.imei);
 		OC_Mqtt_Config(imeibuf, imeibuf,"");
 		OC_Mqtt_Ipstart("182.61.41.198", 1883, 4);
 	}
@@ -53,6 +51,7 @@ static int dtu_mqtt_connect()
 	OSATaskSleep(100);
 	int connectFlag = 0;
 	OC_Mqtt_Connect(1, 240);
+	OC_UART_LOG_Printf("[%s] OC_Mqtt_Connect \n", __func__);
 	while(MqttWorkRun)
 	{
 		bRet = OC_Mqtt_State();
@@ -60,7 +59,8 @@ static int dtu_mqtt_connect()
 		if(bRet==0) {
 			connectFlag++;
 			if(connectFlag >= 20) {
-				OC_Mqtt_Connect(1, 240);
+				OC_UART_LOG_Printf("[%s] OC_Mqtt_Ipclose \n", __func__);		
+				OC_Mqtt_Ipclose();  // 连接失败，释放mqtt资源
 				return -1;
 			}
 		}
@@ -90,8 +90,9 @@ void mqtt_worker_thread(void * argv)
 	{
 		int bRet = OC_Mqtt_State();
 		OC_UART_LOG_Printf("[%s] mqttstatus = %d\n", __func__, bRet);
-		if(bRet == 2){			
-			char buf[50] = {0};
+		if(bRet == 2){	
+			char buf[200] = {0};
+			#if 0
 			Oc_Loc_Info location_info;
 			OC_GetLocation(&location_info);
 			sprintf(buf, "{\"longitude\":%s, \"latitude\":%s}", location_info.longitude,location_info.latitude);
@@ -100,6 +101,8 @@ void mqtt_worker_thread(void * argv)
 				OC_UART_LOG_Printf("[%s] serialdata is not json.\n",__func__);
 				continue;
 			}
+			#endif
+			sprintf(buf, "{\"longitude\":%s, \"latitude\":%s}", "10", "10");
 			OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
 			if(g_dtu_config.passthrougth == TRNAS_THINGS){
 				bRet = OC_Mqtt_Publish("v1/devices/me/telemetry", 0, 0, buf);
@@ -119,18 +122,18 @@ void mqtt_worker_thread(void * argv)
 // mqtt监控线程，判断mqtt状态不正常则发起重连
 void mqtt_monitor_thread(void * argv)
 {
-	// 监控MqttWorkRun,若为FALSE，则重新创建线程
 	OC_UART_LOG_Printf("[%s]: Start Mqtt Thread Monitor.\n", __func__);
-	dtu_mqtt_connect();
 	while (MqttMonitorRun){
 		int netstatus = OC_GetNetStatus();
 		if(netstatus == 1) { // 网络恢复后再重新连接
 			int bRet = OC_Mqtt_State();
-			if(bRet == 3 || bRet == 0 ){  // 只有在mqtt断开连接时才发起重新连接			
-				OC_UART_LOG_Printf("[%s]: reconnecting mqtt thread.\n", __func__);
+			if(bRet == 3 || bRet == 0 ){  // 只有在mqtt断开连接时才发起重新连接
+				// 工作过程中发生中断，释放mqtt资源
+				OC_Mqtt_Disconnect();	
+				OC_Mqtt_Ipclose(); 
+				OC_UART_LOG_Printf("[%s]: OC_Mqtt_Ipclose.\n", __func__);
 				while (1)
 				{
-					OC_Mqtt_Ipclose();
 					int ret = dtu_mqtt_connect();
 					if(ret == 0){
 						break;

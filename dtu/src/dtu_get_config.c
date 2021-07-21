@@ -299,4 +299,6 @@ void device_config_init(dtu_config_t *currentConfig)
     // 读取设备工作模式
 	currentConfig->device_mode = get_device_mode();
     currentConfig->passthrougth = get_passthrough_param();
+
+    device_info_get(&currentConfig->deviceinfo);
 }

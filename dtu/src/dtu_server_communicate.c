@@ -12,26 +12,44 @@ extern dtu_config_t g_dtu_config;
 
 void received_from_server(char *buf, int len, int procotol)
 {
-	char requestid[100] = {0};
-	switch (procotol)
+	OC_UART_LOG_Printf("[%s] received = %s.\n",__func__, buf);
+	cJSON *root = NULL;
+	cJSON *item = NULL;
+	char message_buf[1024] = {0};
+	switch (g_dtu_config.device_mode)
 	{
-	case TRANS_MQTT:
-		OC_UART_LOG_Printf("[%s] %s\n", __func__, buf);
-		//ModBus_setRegister(buf);
-		//sprintf(requestid, "%s%d", g_dtu_config.currentmqtt.publish, pack_id);
-		//OC_Mqtt_Publish(requestid, 1, 0, buf);
+	case MODBUS_MODE:
+		// {"method":"SetModbus", "params":{"s_address": 0, "r_address":1, "count":2, "data":123}}
+		root = cJSON_ParseWithLength(buf, len);
+		if(!cJSON_IsObject(root)){
+			OC_UART_LOG_Printf("[%s] received data is not json.\n",__func__);
+			return;
+		}
+		item = cJSON_GetObjectItem(root, "params");
+		if(!cJSON_IsObject(item)){
+			OC_UART_LOG_Printf("[%s] received params is not json.\n",__func__);
+			return;
+		}
+		uint16_t s_address = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "s_address"));
+		uint16_t r_address = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "r_address"));
+		uint16_t data = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "data"));
+		uint16_t count = cJSON_GetNumberValue(cJSON_GetObjectItem(item, "count"));
+		modbus_set_data(s_address, r_address, data, count);
 		break;
-
-	case TRANS_TCP:
-		// tcp
+	case PASSTHROUGH_MODE:
+		memcpy(message_buf, buf, len);	
+		message_buf[len] = '\n';
+		OC_UART_Send(OC_UART_PORT_3, message_buf, len+1);
 		break;
-
-	case TRANS_SERIAL:
-		OC_UART_Send(OC_UART_PORT_3, buf, len+1);
-		break;
-	
 	default:
 		break;
+	}
+
+	if(root != NULL){
+		free(root);
+	}
+	if(item != NULL){
+		free(item);
 	}
 }
 

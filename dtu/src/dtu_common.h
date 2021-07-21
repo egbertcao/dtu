@@ -100,6 +100,7 @@ typedef struct dtuconfig {
 	serialconfig_t currentserial;
 	socketconfig_t currentsocket;
 	aliconfig_t currentali;
+	deviceinfo_t deviceinfo;
 } dtu_config_t;
 
 
@@ -129,4 +130,5 @@ extern void received_from_server(char *buf, int len, int protocol);
 extern void send_to_server_pass(char *message);
 extern void send_to_server_modbus(unsigned short s_address, char *functionCode, int multiply,unsigned int received_data);
 extern int dtu_netopen_worker();
+extern void modbus_set_data(unsigned short s_address, unsigned short r_address, unsigned short data, unsigned short count);
 #endif

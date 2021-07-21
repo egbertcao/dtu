@@ -23,7 +23,7 @@ void customer_app_watchdog_demo(void)
 	OC_WatchDogInit();
 
 	//step3
-	wdgConfig.matchValue =  1000;
+	wdgConfig.matchValue =  10000;
 	/* RESET mode after "timeMs" */
 	wdgConfig.mode = OC_WATCHDOG_RESET_MODE;
 
