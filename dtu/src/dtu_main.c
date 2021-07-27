@@ -244,6 +244,9 @@ void customer_app_dtu_main(void)
 	OC_UART_LOG_Printf("[%s] -----------passthrougth----------------\n", __func__);
 	OC_UART_LOG_Printf("passthrougth = %d\n", g_dtu_config.passthrougth);
 
+	OC_UART_LOG_Printf("[%s] -----------http----------------\n", __func__);
+	OC_UART_LOG_Printf("url = %s\n", g_dtu_config.currenthttp.url);
+
 	g_serial_buf = (char *)malloc(1024);
 	if(g_serial_buf == NULL) {
 		return;
@@ -252,7 +255,7 @@ void customer_app_dtu_main(void)
 
 	customer_app_uart_start();
 	customer_app_netopen_start();  // 等待网络连接并开启网络连接监控线程
-
+	
 	if(g_dtu_config.passthrougth == TRANS_MQTT || g_dtu_config.passthrougth == TRNAS_THINGS){
 		customer_app_mqtt_start();
 	}
@@ -260,10 +263,10 @@ void customer_app_dtu_main(void)
 		customer_app_tcp_start();
 	}
 	else if(g_dtu_config.passthrougth == TRANS_UDP){
-		customer_app_udp_start();
+		//customer_app_udp_start();
 	}
 	else if(g_dtu_config.passthrougth == TRANS_HTTP){
-		// http
+		//customer_app_http_demo();
 	}
 	else if(g_dtu_config.passthrougth == TRNAS_ALI){
 		// ali

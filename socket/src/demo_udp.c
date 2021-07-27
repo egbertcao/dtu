@@ -5,64 +5,81 @@
 #include "dtu_common.h"
 #include "oc_uart.h"
 
-#define SERV_IP    "182.61.41.198"
-#define SERV_PORT  6601
-
+static OSTaskRef udpWorkerRef;
+static OSTaskRef udpMonitorRef;
+static BOOL bWorkerRun = FALSE;
+static BOOL bMonitorRun = FALSE;
 extern dtu_config_t g_dtu_config;
 
-static int sock_fd;
-static struct sockaddr_in servaddr;
-static OSTaskRef demoWorkerRef;
-static BOOL bRun = FALSE;
+static BOOL UDP_CONNECTION = FALSE;
 
 void dtu_udp_send(char *message)
 {
-	int bytes = sendto(sock_fd, message, strlen(message), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+	int sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+	struct sockaddr_in servaddr;
+	memset(&servaddr, 0, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(8001);  // server port
+	servaddr.sin_addr.s_addr = inet_addr("182.61.41.198");  // server ip
+	int nSize = sizeof(servaddr);
+	OC_UART_LOG_Printf("%s: sendto\n", __func__);
+	int bytes = sendto(sock_fd, message, strlen(message), 0, (struct sockaddr*)&servaddr, nSize);
 	printf("bytes = %d", bytes);
+	closesocket(sock_fd);
 }
 
+// 只接收数据
 void udp_worker_thread(void)
 {
-	int sock_fd;
-	int bytes =0;
-	int res=-1;
-	char sendbuf[64]={0};
-	char recvbuf[64]={0};
-	sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
-	memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(g_dtu_config.currentsocket.udpport);  // server port
-    servaddr.sin_addr.s_addr = inet_addr(g_dtu_config.currentsocket.udpaddress);  // server ip
-	 if(connect(sock_fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-    {
-        OC_UART_LOG_Printf("connect faild!!");
-        return;
-    }
-    OC_UART_LOG_Printf("connect: Success\n");
-	strcpy(sendbuf,"udp test!");
-	bytes = sendto(sock_fd,sendbuf, strlen(sendbuf), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
-	struct sockaddr_in server;
-	socklen_t addrlen;
-	bytes = recvfrom(sock_fd, recvbuf, sizeof(recvbuf), 0, &server, &addrlen);
-	OC_UART_LOG_Printf("%s: recvbuf:%s\n", __func__,recvbuf);
+	OC_UART_LOG_Printf("[%s] udp Worker Start!\n", __func__);
+	while (bWorkerRun)
+	{
+	
+		int netstatus = OC_GetNetStatus();
+		if(netstatus == 1) { 
+			OC_UART_LOG_Printf("[%s] recving...\n", __func__);
+			char recvbuf[64]={0};
+			int sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+			struct sockaddr_in servaddr;	
+			memset(&servaddr, 0, sizeof(servaddr));
+			servaddr.sin_family = AF_INET;
+			servaddr.sin_port = htons(8001);  // server port
+			servaddr.sin_addr.s_addr = inet_addr("182.61.41.198");  // server ip
+			int nSize = sizeof(servaddr);
+			struct timeval tv;
+			tv.tv_sec = 5;
+			tv.tv_usec = 0;
+			if (setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+				OC_UART_LOG_Printf("[%s] error\n", __func__);
+				continue;
+			}
+			int bytes = recvfrom(sock_fd, recvbuf, sizeof(recvbuf), 0, &servaddr, &nSize);
+			if(bytes > 0){
+				OC_UART_LOG_Printf("[%s] recvbuf:%s\n", __func__,recvbuf);
+			}
+			closesocket(sock_fd);
+		}
+		else{
+			OSATaskSleep(2000);
+		}
+	}
+	
 }
 
 void customer_app_udp_start(void)
 {
-	OC_UART_LOG_Printf("[%s] udp Start!\n", __func__);
-	void *TaskStack;
-	TaskStack=malloc(4096);
-	if(TaskStack == NULL)
+	void *udpWorkTaskStack;
+	udpWorkTaskStack=malloc(4096);
+	if(udpWorkTaskStack == NULL)
 	{
 		return;
 	}
-	bRun = TRUE;
-	if(OSATaskCreate(&demoWorkerRef,
-	                 TaskStack,
-	                 4096,80,(char*)"demoMqttTask",
+	bWorkerRun = TRUE;
+	if(OSATaskCreate(&udpWorkerRef,
+	                 udpWorkTaskStack,
+	                 4096,80,(char*)"udpWorkerTask",
 	                 udp_worker_thread, NULL) != 0)
 	{
 		return;
 	}
 }
-

@@ -225,6 +225,7 @@ void tool_serial_config_write(cJSON *msg)
         OC_UART_LOG_Printf("[%s] tool_pass_config_write success.\n", __func__);
     }
 }
+
 void tool_serial_config_read()
 {
     memset(read_buf, 0, 512);
@@ -241,6 +242,35 @@ void tool_serial_config_read()
     free(root);
 }
 
+void tool_http_config_write(cJSON *msg)
+{
+    if(!cJSON_IsObject(msg)){
+        OC_UART_LOG_Printf("[%s] data is not a json.\n", __func__);
+        return;
+    }
+    char *config_buf = cJSON_PrintUnformatted(msg);
+    OC_UART_LOG_Printf("%s\n", config_buf);
+    int write_ret = oc_write_file(HTTP_CONFIG_FILE, config_buf);
+    if(write_ret > 0) {
+        OC_UART_LOG_Printf("[%s] tool_pass_config_write success.\n", __func__);
+    }
+}
+
+void tool_http_config_read()
+{
+    memset(read_buf, 0, 512);
+    int read_ret = oc_read_file(HTTP_CONFIG_FILE, read_buf);
+    if(read_ret <= 0){
+        return;
+    }
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "SerialFunction", cJSON_CreateNumber(GetHttpSetting));
+    cJSON *item = cJSON_ParseWithLength(read_buf, read_ret);
+    cJSON_AddItemToObject(root, "msg", item);
+    send_to_serial(cJSON_PrintUnformatted(root));
+    free(item);
+    free(root);
+}
 
 void tool_tcp_config_write(cJSON *msg)
 {
@@ -387,6 +417,13 @@ void device_config(char *serialdata, size_t size)
         break;
     case GetAliSetting:
         tool_ali_config_read();
+        break;
+    case SetHttpSetting:
+        msg = cJSON_GetObjectItem(root, "msg");
+        tool_http_config_write(msg);
+        break;
+    case GetHttpSetting:
+        tool_http_config_read();
         break;
     default:
         break;

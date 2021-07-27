@@ -112,6 +112,9 @@ void send_to_server_modbus(uint16_t s_address, char *functionCode, int multiply,
 	case TRANS_TCP:
 		dtu_tcp_send(message_buf);
 		break;
+	case TRANS_HTTP:
+		dtu_http_send(message_buf);
+		break;
 
 	default:
 		break;

@@ -228,6 +228,23 @@ static int get_passthrough_param()
     return protocol;
 }
 
+static void get_http_param(httpconfig_t *httpConfig)
+{
+    memset(read_buf, 0 ,512);
+    int protocol = 0;
+    int read_ret = oc_read_file(HTTP_CONFIG_FILE, read_buf);
+    if(read_ret <= 0){
+		return -1;
+	}
+
+    cJSON *root = cJSON_ParseWithLength(read_buf, read_ret);
+	if(root != NULL) {
+        char *url = cJSON_GetStringValue(cJSON_GetObjectItem(root, "url"));
+        memcpy(httpConfig->url, url, strlen(url)); 
+    }
+    free(root);
+}
+
 static void mqtt_param_init()
 {
     cJSON *mqttroot = cJSON_CreateObject();
@@ -271,9 +288,19 @@ static void socket_param_init()
 static void pass_param_init()
 {
     cJSON *passroot = cJSON_CreateObject();
-    cJSON_AddItemToObject(passroot, "passProtocol", cJSON_CreateNumber(TRNAS_THINGS));
+    //cJSON_AddItemToObject(passroot, "passProtocol", cJSON_CreateNumber(TRNAS_THINGS));
+    cJSON_AddItemToObject(passroot, "passProtocol", cJSON_CreateNumber(TRANS_HTTP));
     tool_pass_config_write(passroot);
     free(passroot);
+    OC_UART_LOG_Printf("[%s] success!\n", __func__);
+}
+
+static void http_param_init()
+{
+    cJSON *httproot = cJSON_CreateObject();
+    cJSON_AddItemToObject(httproot, "url", cJSON_CreateString("http://182.61.41.198:8015/form_post"));
+    tool_http_config_write(httproot);
+    free(httproot);
     OC_UART_LOG_Printf("[%s] success!\n", __func__);
 }
 
@@ -290,12 +317,14 @@ void device_config_init(dtu_config_t *currentConfig)
         mqtt_param_init();
         socket_param_init();
         pass_param_init();
+        http_param_init();
     }
 
 	get_serial_param(&currentConfig->currentserial);
 	get_mqtt_param(&currentConfig->currentmqtt);
 	get_socket_param(&currentConfig->currentsocket);
 	get_ali_param(&currentConfig->currentali);
+    get_http_param(&currentConfig->currenthttp);
     // 读取设备工作模式
 	currentConfig->device_mode = get_device_mode();
     currentConfig->passthrougth = get_passthrough_param();

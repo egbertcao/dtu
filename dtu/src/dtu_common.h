@@ -57,6 +57,10 @@ typedef struct aliconfig {
 	unsigned int puback_mode;
 } aliconfig_t;
 
+typedef struct httpconfig {
+	char url[100];
+} httpconfig_t;
+
 enum Device_mode
 {
 	CONFIG_MODE = 1,
@@ -90,7 +94,9 @@ enum SerialFunctionCode {
 	SetTcpSetting,
 	GetTcpSetting,
 	SetAliSetting,
-	GetAliSetting
+	GetAliSetting,
+	SetHttpSetting,
+	GetHttpSetting
 };
 
 typedef struct dtuconfig {
@@ -101,6 +107,7 @@ typedef struct dtuconfig {
 	socketconfig_t currentsocket;
 	aliconfig_t currentali;
 	deviceinfo_t deviceinfo;
+	httpconfig_t currenthttp;
 } dtu_config_t;
 
 
@@ -114,6 +121,7 @@ typedef struct dtuconfig {
 #define SERIAL_CONFIG_FILE "serialconfig.json"
 #define SOCKET_CONFIG_FILE "sockerconfig.json"
 #define ALI_CONFIG_FILE "aliconfig.json"
+#define HTTP_CONFIG_FILE "httpconfig.json"
 
 extern int oc_write_file(char *filename, char *buf);
 extern int oc_read_file(char *filename, char *buf);
